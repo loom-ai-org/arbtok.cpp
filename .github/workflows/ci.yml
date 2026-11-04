@@ -30,12 +30,24 @@ jobs:
             "https://huggingface.co/datasets/TigreGotico/arabic-stem-lexicon/resolve/$rev/ar-stems.tsv"
           printf %s "$rev" > "$d/refs/main"
           echo "2f6a66dbbbee86f2db873497463d6e93eb0fddc431b7fd002244d99699fb79ee  $d/snapshots/$rev/ar-stems.tsv" | sha256sum -c
+      - uses: astral-sh/setup-uv@v6
+      - name: Show the CPU
+        run: |
+          grep -m1 'model name' /proc/cpuinfo
+          grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|avx2|fma|f16c|avx512[a-z_0-9]*|avx_vnni[a-z_0-9]*|amx[a-z_0-9]*)$' | tr '\n' ' '
+          echo
+      - name: Dump the model goldens on this runner
+        # The model goldens hold the onnxruntime output of one CPU class, so the
+        # runner dumps them again with the Python reference. The gcc baseline
+        # cell also dumps the other goldens, which must be byte-identical to the
+        # committed files.
+        run: tools/dump_model_goldens.sh "$RUNNER_TEMP/goldens" ${{ (matrix.compiler == 'gcc' && matrix.march == 'baseline') && '--check' || '' }}
       - name: Configure
         run: |
           if [ "${{ matrix.compiler }}" = clang ]; then export CXX=clang++; else export CXX=g++; fi
           if [ "${{ matrix.march }}" != baseline ]; then flags="-march=${{ matrix.march }}"; fi
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$PWD/prefix" \
-            -DCMAKE_CXX_FLAGS="${flags:-}"
+            -DARBTOK_GOLDENS_DIR="$RUNNER_TEMP/goldens" -DCMAKE_CXX_FLAGS="${flags:-}"
       - name: Build
         run: cmake --build build -j
       - name: Test
@@ -78,9 +90,18 @@ jobs:
             "https://huggingface.co/datasets/TigreGotico/arabic-stem-lexicon/resolve/$rev/ar-stems.tsv"
           printf %s "$rev" > "$d/refs/main"
           echo "2f6a66dbbbee86f2db873497463d6e93eb0fddc431b7fd002244d99699fb79ee  $d/snapshots/$rev/ar-stems.tsv" | sha256sum -c
+      - uses: astral-sh/setup-uv@v6
+      - name: Show the CPU
+        run: |
+          grep -m1 'model name' /proc/cpuinfo
+          grep -m1 '^flags' /proc/cpuinfo | tr ' ' '\n' | grep -E '^(avx|avx2|fma|f16c|avx512[a-z_0-9]*|avx_vnni[a-z_0-9]*|amx[a-z_0-9]*)$' | tr '\n' ' '
+          echo
+      - name: Dump the model goldens on this runner
+        run: tools/dump_model_goldens.sh "$RUNNER_TEMP/goldens"
       - name: Build with ASan and UBSan
         run: |
           CXX=clang++ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DARBTOK_PARITY_STRIDE=20 \
+            -DARBTOK_GOLDENS_DIR="$RUNNER_TEMP/goldens" \
             -DCMAKE_CXX_FLAGS="-O1 -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all -D_GLIBCXX_ASSERTIONS"
           cmake --build build -j
       - name: Test

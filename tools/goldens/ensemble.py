@@ -14,7 +14,8 @@ ill-formed UTF-8. Every record holds the decisions and the SHA-256 of its
 logits. --out also keeps the logits of every LOGITS_STRIDE[kind]-th record of a
 kind whose bare text has at most LOGITS_MAX_ROWS characters, which keeps the
 file small. --full-logits-out writes the same records with the logits of all
-of them.
+of them. The header names the CPU class of the dump (cpu_class.py), because
+onnxruntime gives other logits on a CPU of another class.
 """
 
 import argparse
@@ -30,6 +31,9 @@ from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from cpu_class import cpu_class  # noqa: E402
 
 from arbtok import _ensemble
 from arbtok import diacritize as dz
@@ -222,6 +226,7 @@ def main():
         "classes": ens.classes,
         "unk": ens.unk,
         "records": len(inputs),
+        "cpu_class": cpu_class(),
     }
 
     outs = [(args.out, False)]

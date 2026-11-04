@@ -9,6 +9,10 @@
 // is not in the goldens, fails the run, so that the list shrinks when the fix
 // lands.
 //
+// A golden whose dump ran the model names the CPU class of the dump in its
+// header (tests/cpu_class.hpp). On a CPU of another class the run stops with
+// that reason before it reads a record.
+//
 // A record that depends on the GPL-2.0-derived stem lexicon holds
 // {"sha256": <hex>} in place of each result item, where <hex> is the SHA-256
 // of Python's line. The C++ line of such a record is compared by its SHA-256,
@@ -29,6 +33,7 @@
 #include <utility>
 #include <vector>
 
+#include "cpu_class.hpp"
 #include "json_line.hpp"
 #include "sha256.hpp"
 #include "parity/modules.hpp"
@@ -49,6 +54,16 @@ std::optional<std::string> record_digest(const std::string& line) {
     const std::string hex = line.substr(line.size() - 64 - close.size(), 64);
     if (hex.find_first_not_of("0123456789abcdef") != std::string::npos) return std::nullopt;
     return hex;
+}
+
+// The "cpu_class" of a golden header, empty when it has none: the golden then
+// holds no model output.
+std::string header_cpu_class(const std::string& header) {
+    static const std::string key = "\"cpu_class\":\"";
+    const size_t at = header.find(key);
+    if (at == std::string::npos) return "";
+    const size_t start = at + key.size();
+    return header.substr(start, header.find('"', start) - start);
 }
 
 // The "sha256_records" of a golden header, 0 when it has none.
@@ -98,6 +113,10 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
     if (lines.empty()) throw std::runtime_error("empty golden file " + path);
     t.expected = json_line::header_count(lines[0]);
     const long expected_hashed = header_hashed(lines[0]);
+    if (const std::string golden_class = header_cpu_class(lines[0]); !golden_class.empty()) {
+        const std::string why = cpu_class::mismatch(path, golden_class);
+        if (!why.empty()) throw std::runtime_error(why);
+    }
     std::map<std::string, long> by_function;
     // The listed lines the whole file holds: a listed divergence is stale only
     // when the file lacks it, whichever shard runs.

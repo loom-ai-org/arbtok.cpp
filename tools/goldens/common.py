@@ -6,7 +6,9 @@ per corpus. Each other line is one record: [function, arguments..., result],
 written as compact JSON. A record whose line changes when the stem lexicon has
 no entries holds {"sha256": <hex>} in place of each result item, where <hex>
 is the SHA-256 of the UTF-8 line. The header then gives the count of those
-records as "sha256_records". An exception is recorded as {"err": "<class name>"},
+records as "sha256_records". A golden whose dump ran the model names the CPU
+class of the dump as "cpu_class" (cpu_class.py), because onnxruntime runs other
+kernels, with other results, on another class. An exception is recorded as {"err": "<class name>"},
 because the exception class is part of the contract. A Python set is written
 sorted, because its iteration order follows the hash seed.
 
@@ -34,6 +36,9 @@ REFERENCE = ("arbtok", "orthography2ipa", "langcodes", "linguatag", "ovos-spec-t
 #: resolves, so a re-dump with other versions can change the dialects records.
 PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
           "ovos-spec-tools": "1.17.1a1"}
+#: The packages that compute the model output and the log-probabilities: onnxruntime is the version of the C++
+#: tarball, and fusion.logprobs replicates the numpy loops of this numpy.
+RUNTIME = {"onnxruntime": "1.31.1", "numpy": "2.5.4"}
 #: The arbtok commit whose version.py is 0.0.2a71; the gold sets are read there.
 GOLD_COMMIT = "a95668cf097c5fcfb72b7ab75d7346579626e7a5"
 
@@ -62,10 +67,12 @@ def call(fn, *args, **kwargs):
 
 
 def versions():
-    out = {name: importlib.metadata.version(name) for name in REFERENCE}
-    wrong = {name: out[name] for name, version in PINNED.items() if out[name] != version}
+    pins = PINNED | RUNTIME
+    wrong = {name: importlib.metadata.version(name) for name, version in pins.items()
+             if importlib.metadata.version(name) != version}
     if wrong:
-        raise SystemExit(f"the reference environment has {wrong}, the port is held to {PINNED}")
+        raise SystemExit(f"the reference environment has {wrong}, the port is held to {pins}")
+    out = {name: importlib.metadata.version(name) for name in REFERENCE}
     out["python"] = sys.version.split()[0]
     out["unicode"] = unicodedata.unidata_version
     return out
@@ -192,9 +199,10 @@ def write_lines(path, corpora):
                 fh.write(dumps(r) + "\n")
 
 
-def write(path, module, corpora, stem_free):
+def write(path, module, corpora, stem_free, cpu=None):
     """corpora: [(corpus name, input count, records)]. stem_free: the lines of the
-    same records, dumped with a stem lexicon that has no entries.
+    same records, dumped with a stem lexicon that has no entries. cpu: the CPU
+    class, when the dump of the corpora ran the model.
 
     The header holds the input count of each corpus. A record whose line differs
     from its stem-free line is written hashed. After the file is written, its
@@ -226,6 +234,8 @@ def write(path, module, corpora, stem_free):
               "count": sum(counts.values())}
     if n_hashed:
         header["sha256_records"] = n_hashed
+    if cpu:
+        header["cpu_class"] = cpu
     raw = io.BytesIO()
     with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, filename="") as gz:
         gz.write((dumps(header) + "\n").encode("utf-8"))

@@ -169,26 +169,30 @@ if(ARBTOK_BUILD_TESTS)
     # The fusion records run in full and in one test whatever the stride: a
     # text with no word leaves last_nbest as the record before it set it.
     set(ARBTOK_PARITY_STRIDE 1 CACHE STRING "Check every n-th golden record")
+    # The goldens of the model hold the output of one CPU class. On a CPU of
+    # another class, tools/dump_model_goldens.sh writes a directory that holds
+    # them dumped on this CPU, and this variable names it.
+    set(ARBTOK_GOLDENS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens CACHE PATH "The directory of the golden files")
     set(_divergences --divergences ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/expected_divergences.tsv)
     set(_sharded dialects diacritize)
     set(_parity_tests)
     foreach(_module IN LISTS _parity_modules)
         if(_module STREQUAL "fusion")
-            add_test(NAME parity_fusion COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
+            add_test(NAME parity_fusion COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
                      ${_divergences} fusion)
             list(APPEND _parity_tests parity_fusion)
         elseif(NOT _module IN_LIST _sharded)
-            add_test(NAME parity_${_module} COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
+            add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
                      ${_divergences} --stride ${ARBTOK_PARITY_STRIDE} ${_module})
             list(APPEND _parity_tests parity_${_module})
         elseif(ARBTOK_PARITY_STRIDE GREATER 1)
             math(EXPR _shard_stride "${ARBTOK_PARITY_STRIDE} * 8")
-            add_test(NAME parity_${_module} COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
+            add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
                      ${_divergences} --stride ${_shard_stride} ${_module})
             list(APPEND _parity_tests parity_${_module})
         else()
             foreach(_k RANGE 7)
-                add_test(NAME parity_${_module}_${_k} COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
+                add_test(NAME parity_${_module}_${_k} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
                          ${_divergences} --shard ${_k}/8 ${_module})
                 list(APPEND _parity_tests parity_${_module}_${_k})
             endforeach()
@@ -203,9 +207,9 @@ if(ARBTOK_BUILD_TESTS)
     endforeach()
     add_test(NAME ensemble_api COMMAND ensemble_api)
     add_test(NAME ensemble_unicode_parity
-        COMMAND ensemble_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens/ensemble_unicode.jsonl.gz)
+        COMMAND ensemble_parity ${ARBTOK_GOLDENS_DIR}/ensemble_unicode.jsonl.gz)
     add_test(NAME ensemble_parity
-        COMMAND ensemble_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens/ensemble.jsonl.gz)
+        COMMAND ensemble_parity ${ARBTOK_GOLDENS_DIR}/ensemble.jsonl.gz)
     set_tests_properties(ensemble_parity PROPERTIES TIMEOUT 1800)
     list(APPEND _parity_tests ensemble_api ensemble_unicode_parity ensemble_parity)
 

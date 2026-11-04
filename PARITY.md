@@ -478,6 +478,40 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 
 Two fusion mutations survive. Equal log-probabilities in ascending index order give 0 mismatches, because no tie among the top classes occurs on the corpus. A lattice weight of the opposite sign gives 0 mismatches, because the lattice cost of every licensed reading is 0.0 in Python too: each slot's top candidate costs 0.0 in the specs of these lects (73992 n-best entries in the fusion goldens, 7959 slots in the lattice goldens).
 
+## Model output and the CPU
+
+The ensemble model is an int8 ONNX model. onnxruntime picks its MLAS kernels once per process, in `MlasPlatform::MlasPlatform()` (`onnxruntime/core/mlas/lib/platform.cpp` at tag v1.31.1), from CPUID and XGETBV. Different kernels give different logits for the same input. The C++ port and Python both run onnxruntime 1.31.1, so the C++ logits equal the Python logits only on the same kernels.
+
+The CPU class names the checks of that function that change a kernel this model reaches, joined with `+`. The model runs MatMulInteger, DynamicQuantizeLSTM and DynamicQuantizeLinear, which reach the U8S8 and U8U8 GEMM kernels, the logistic and tanh kernels and the quantize kernels.
+
+| Tier | platform.cpp line | Check |
+| --- | --- | --- |
+| avx | 501, 512 | CPUID.1:ECX bits 27 and 28 (AVX, OSXSAVE), XCR0 & 0x6 |
+| avx2 | 546 | CPUID.1:ECX bit 12 (FMA3), CPUID.7.0:EBX bit 5 (AVX2) |
+| avxvnni | 608 | CPUID.7.1:EAX bit 4 |
+| avx512f | 623 | CPUID.7.0:EBX bit 16, XCR0 & 0xE0 |
+| avx512core | 650 | CPUID.7.0:EBX bits 17, 30 and 31 (DQ, BW, VL) |
+| avx512vnni | 665 | CPUID.7.0:ECX bit 11 |
+| avxvnniint8 | 681 | CPUID.7.1:EDX bit 4 |
+| amx | 704, 214 | CPUID.7.0:EDX bits 24 and 25, XCR0 bits 17 and 18, the ARCH_REQ_XCOMP_PERM request |
+
+The checks from line 546 on are inside the avx2 check, and lines 650 and 665 are inside the avx512f check. A CPU without AVX is class `sse`. The F16C (line 585), hybrid-core (line 593) and AVX-NE-CONVERT (line 694) checks change only float16 kernels and the thread count. `tools/goldens/cpu_class.py` and `tests/cpu_class.hpp` compute the class from the same bits. The committed goldens come from an Intel i9-11900H, class `avx+avx2+avx512f+avx512core+avx512vnni`. qemu with `-cpu Haswell` is class `avx+avx2`.
+
+A golden that holds model output names its CPU class in the header as `cpu_class`. `tools/dump_goldens.py` counts the onnxruntime session runs of each module, and writes the class into the header of each module that runs the model. `tools/goldens/ensemble.py` always writes it. The model goldens are tashkeel, diacritize, fusion and ensemble. The other goldens run no session. The Python reference gives other records for each model golden under `qemu-x86_64-static -cpu Haswell`, which is class `avx+avx2`:
+
+| Golden | Records that differ under qemu Haswell |
+| --- | --- |
+| tashkeel | 8 of 3014 (the full corpus) |
+| diacritize | 1 of 174: the word record of `كتاب` under `ar` without waqf |
+| fusion | 21 of 80: logprobs 18 of 40, fusion 3 of 40 |
+| ensemble | the logits of `كتاب` and `ونبذأ` |
+
+The fusion logprobs records are model output too: their input rows are the logits of the model.
+
+`arbtok_parity` and `ensemble_parity` compare the class in the header with the class of the CPU that runs the test. When they differ, the test fails before it compares a record. Its message names both classes and the command that dumps the model goldens.
+
+`tools/dump_model_goldens.sh <dir>` builds the reference venv with uv, fetches the sdist and the arbtok repository at the gold commit, and copies `tests/goldens` to `<dir>`. Then it dumps each golden whose header names a class again on this CPU. Configure with `-DARBTOK_GOLDENS_DIR=<dir>` to run the tests on that directory. With `--check`, the script also dumps the other goldens and fails unless the records of each one are byte-identical to the committed file. It does the same for a model golden whose class is the class of this CPU. Every CI test job prints the runner CPU and dumps the model goldens before ctest. The gcc baseline job adds `--check`.
+
 ## Python semantics that the port keeps
 
 - The `str` methods (`lower`, `isalpha`, `isdigit`, `isspace` and the others the rules call) use tables that `tools/gen_unicode_tables.py` generates from the reference interpreter, so they follow Unicode 15.0.0 as Python 3.12 does. `tools/gen_unicode_norm_tables.py` does the same for NFC and NFD.

@@ -23,6 +23,7 @@
 
 #include "arbtok/diacritize.hpp"
 #include "arbtok/ensemble.hpp"
+#include "cpu_class.hpp"
 #include "detail.hpp"
 #include "json.hpp"
 #include "unicode_norm.hpp"
@@ -244,6 +245,13 @@ int main(int argc, char** argv) {
 
     const arbtok::ensemble::EnsembleDiacritizer* ens = nullptr;
     if (kind == "header") {
+        if (const json::Value* golden_class = header.find("cpu_class")) {
+            const std::string why = cpu_class::mismatch(argv[1], S(*golden_class));
+            if (!why.empty()) {
+                std::cerr << why << "\n";
+                return 1;
+            }
+        }
         ens = &arbtok::ensemble::get_ensemble();
         std::cout << "reference arbtok " << S(header.at("arbtok")) << ", onnxruntime " << S(header.at("onnxruntime"))
                   << ", numpy " << S(header.at("numpy")) << "; C++ onnxruntime "

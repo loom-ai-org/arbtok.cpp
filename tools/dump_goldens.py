@@ -20,6 +20,10 @@ second interpreter dumps the same corpora with a stem lexicon that has a
 header and no entries, in a Hugging Face cache of its own. A record that the
 two runs write differently depends on the stem lexicon, and the golden holds
 the SHA-256 of its line in place of its result (see common.write).
+
+A golden whose dump runs the onnxruntime session of the ensemble names the
+CPU class of this machine in its header, and holds output of that class only.
+tools/dump_model_goldens.sh dumps those goldens again on another machine.
 """
 import argparse
 import importlib
@@ -32,7 +36,22 @@ import time
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+import onnxruntime  # noqa: E402
+
 from goldens import common  # noqa: E402
+from goldens.cpu_class import cpu_class  # noqa: E402
+
+SESSION_RUNS = [0]
+
+
+def _counted(run):
+    def counted(*args, **kwargs):
+        SESSION_RUNS[0] += 1
+        return run(*args, **kwargs)
+    return counted
+
+
+onnxruntime.InferenceSession.run = _counted(onnxruntime.InferenceSession.run)
 
 MODULES = [
     "constants",
@@ -124,9 +143,11 @@ def main():
         try:
             for name in args.modules:
                 module = importlib.import_module(f"goldens.{name}")
+                runs = SESSION_RUNS[0]
                 corpora = module.corpora()
+                cpu = cpu_class() if SESSION_RUNS[0] > runs else None
                 total += common.write(str(pathlib.Path(args.out_dir) / f"{name}.jsonl.gz"), name, corpora,
-                                      stem_free_lines(child, out, name))
+                                      stem_free_lines(child, out, name), cpu)
             if child.wait() != 0:
                 raise SystemExit(f"the dump with the empty stem lexicon stopped with exit code {child.returncode}")
         finally:
