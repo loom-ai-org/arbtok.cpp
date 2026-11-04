@@ -56,11 +56,12 @@ inline std::string guard(const std::function<std::string()>& fn) {
     }
 }
 
-// The input part of a record: everything but the last item, as an open array.
-inline std::string head(const Value& v) {
+// The input part of a record: everything but the last `results` items, as an
+// open array.
+inline std::string head(const Value& v, size_t results = 1) {
     std::string out = "[";
-    for (size_t i = 0; i + 1 < v.size(); ++i) out += (i ? "," : "") + json_line::dump(v[i]);
-    return out + (v.size() > 1 ? "," : "");
+    for (size_t i = 0; i + results < v.size(); ++i) out += (i ? "," : "") + json_line::dump(v[i]);
+    return out + (v.size() > results ? "," : "");
 }
 
 inline std::optional<std::string> opt_str(const Value& v) {

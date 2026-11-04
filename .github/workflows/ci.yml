@@ -20,6 +20,16 @@ jobs:
           submodules: recursive
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y zlib1g-dev libboost-dev libicu-dev
+      - name: Fetch the stem lexicon into the Hugging Face cache
+        # The lexicon, diacritize and fusion goldens read this revision; the tests run offline.
+        run: |
+          rev=05a7734e5ff20a567820f7134e1414a4b2daaa87
+          d="$HOME/.cache/huggingface/hub/datasets--TigreGotico--arabic-stem-lexicon"
+          mkdir -p "$d/refs" "$d/snapshots/$rev"
+          curl -sSfL -o "$d/snapshots/$rev/ar-stems.tsv" \
+            "https://huggingface.co/datasets/TigreGotico/arabic-stem-lexicon/resolve/$rev/ar-stems.tsv"
+          printf %s "$rev" > "$d/refs/main"
+          echo "2f6a66dbbbee86f2db873497463d6e93eb0fddc431b7fd002244d99699fb79ee  $d/snapshots/$rev/ar-stems.tsv" | sha256sum -c
       - name: Configure
         run: |
           if [ "${{ matrix.compiler }}" = clang ]; then export CXX=clang++; else export CXX=g++; fi
@@ -58,6 +68,16 @@ jobs:
           submodules: recursive
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y zlib1g-dev libboost-dev libicu-dev
+      - name: Fetch the stem lexicon into the Hugging Face cache
+        # The lexicon, diacritize and fusion goldens read this revision; the tests run offline.
+        run: |
+          rev=05a7734e5ff20a567820f7134e1414a4b2daaa87
+          d="$HOME/.cache/huggingface/hub/datasets--TigreGotico--arabic-stem-lexicon"
+          mkdir -p "$d/refs" "$d/snapshots/$rev"
+          curl -sSfL -o "$d/snapshots/$rev/ar-stems.tsv" \
+            "https://huggingface.co/datasets/TigreGotico/arabic-stem-lexicon/resolve/$rev/ar-stems.tsv"
+          printf %s "$rev" > "$d/refs/main"
+          echo "2f6a66dbbbee86f2db873497463d6e93eb0fddc431b7fd002244d99699fb79ee  $d/snapshots/$rev/ar-stems.tsv" | sha256sum -c
       - name: Build with ASan and UBSan
         run: |
           CXX=clang++ cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DARBTOK_PARITY_STRIDE=20 \

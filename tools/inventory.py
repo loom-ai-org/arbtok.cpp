@@ -20,24 +20,31 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 BEGIN, END = "<!-- inventory:begin -->", "<!-- inventory:end -->"
 
-# Modules of the port: their C++ namespace is arbtok::<module>, their header
-# include/arbtok/<module>.hpp, and each name keeps its Python spelling unless
-# RENAMED gives another.
-PORTED = {"arabizi", "constants", "dialects", "lattice", "nisba", "orthography", "sandhi", "stress", "tashkeel",
-          "tokenizer", "unicode_symbol2label", "version", "waqf"}
+# Modules of the port: their C++ namespace is arbtok::<module> (or the one
+# NAMESPACE gives), their header include/arbtok/<namespace>.hpp, and each name
+# keeps its Python spelling unless RENAMED gives another.
+PORTED = {"_ensemble", "arabizi", "constants", "diacritize", "dialect_lexicon", "dialects", "donor_lexicon", "fusion",
+          "lattice", "lexicon", "nisba", "orthography", "sandhi", "stress", "tashkeel", "tokenizer",
+          "unicode_symbol2label", "version", "waqf"}
+NAMESPACE = {"_ensemble": "ensemble"}
 RENAMED = {
+    "_ensemble.DEFAULT_ENSEMBLE_ONNX": "default_ensemble_onnx()",
+    "_ensemble.DEFAULT_VOCAB": "default_vocab()",
     "lattice.DEFAULT_RESCORERS": "default_rescorers()",
+    "lexicon.CACHE_DIR": "cache_dir()",
     "unicode_symbol2label.UNICODE_SYMBOL_TO_LABEL": "items(), get()",
 }
 # Names of a ported module that a later phase ports, and names of the other
 # modules that this phase ports.
-LATER_IN_PORTED = {"tashkeel.TashkeelDiacritizer": 2, "tashkeel.TashkeelDiacritizer.diacritize": 2}
+LATER_IN_PORTED = {}
 PORTED_ELSEWHERE = {"textnorm.ARABIC_LANGUAGE_CODES", "textnorm.is_arabic_lang"}
 # The package __all__: the module each re-exported name comes from.
 REEXPORTS = {"AsrNorm": "textnorm", "Lect": "dialects", "TtsNorm": "textnorm", "__version__": "version",
              "is_arabic_lang": "textnorm", "normalize_asr": "textnorm", "normalize_for_tts": "textnorm",
              "spec_for_lang": "dialects", "supported_lects": "dialects", "vocalize": "__init__"}
 REEXPORT_TARGET = {"__version__": "VERSION_STR"}
+# The functions that the package itself defines, which include/arbtok/arbtok.hpp holds.
+PACKAGE_FUNCTIONS = {"vocalize"}
 PHASE = {"__init__": 2, "_ensemble": 2, "diacritize": 2, "dialect_lexicon": 2, "donor_lexicon": 2, "fusion": 2,
          "lexicon": 2, "textnorm": 3, "util": 3, "o2i_plugins": 4, "plugin": 4, "translit": 4}
 NOT_PORTED = {"espeak_wrapper": "not ported: no phoonnx voice path calls it"}
@@ -82,7 +89,7 @@ def module_surface(path):
 
 
 def header_has(module, cpp_name):
-    header = ROOT / "include" / "arbtok" / f"{module}.hpp"
+    header = ROOT / "include" / "arbtok" / f"{NAMESPACE.get(module, module)}.hpp"
     if not header.exists():
         return False
     text = header.read_text(encoding="utf-8")
@@ -91,7 +98,8 @@ def header_has(module, cpp_name):
 
 
 def cpp_name(module, name):
-    return "arbtok::{}::{}".format(module, RENAMED.get(f"{module}.{name}", name.replace(".", "::")))
+    target = RENAMED.get(f"{module}.{name}", name.replace(".", "::"))
+    return f"arbtok::{target}" if module == "arbtok" else f"arbtok::{NAMESPACE.get(module, module)}::{target}"
 
 
 def rows(package_dir):
@@ -103,7 +111,9 @@ def rows(package_dir):
             for name in all_names:
                 source = REEXPORTS[name]
                 key = f"{source}.{name}"
-                if source in PORTED or key in PORTED_ELSEWHERE:
+                if source == "__init__" and name in PACKAGE_FUNCTIONS:
+                    out.append(("arbtok", name, cpp_name("arbtok", name), "ported", "arbtok", name))
+                elif source in PORTED or key in PORTED_ELSEWHERE:
                     target = REEXPORT_TARGET.get(name, name)
                     out.append(("arbtok", name, cpp_name(source, target), "ported", source, target))
                 else:

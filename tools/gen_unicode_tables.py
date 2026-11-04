@@ -1,8 +1,9 @@
 """Generate src/unicode_tables.inc from the running Python's Unicode database.
 
 The C++ port must match Python's str.lower, str.upper, str.isspace,
-str.isalnum, str.isalpha and str.isdigit, and unicodedata.category(c) == "Mn"
-and == "So".
+str.isalnum, str.isalpha and str.isdigit, unicodedata.category(c) == "Mn"
+and == "So", the decimal value that int() reads, and the letters whose
+unicodedata.name starts with "ARABIC".
 The tables are taken from Python itself rather than from ICU, so the two agree
 on the same Unicode version; the version is written into the generated file.
 
@@ -52,6 +53,26 @@ def arabic_script_letter(c):
     return unicodedata.category(c) == "Lo" and any(lo <= ord(c) <= hi for lo, hi in ARABIC_BLOCKS)
 
 
+def arabic_named_letter(c):
+    return unicodedata.category(c).startswith("L") and unicodedata.name(c, "").startswith("ARABIC")
+
+
+def decimal_runs():
+    """(first, last, value of first) for each run of code points whose decimal values count up by one."""
+    out = []
+    for cp in range(MAX):
+        if surrogate(cp):
+            continue
+        value = unicodedata.decimal(chr(cp), None)
+        if value is None:
+            continue
+        if out and out[-1][1] == cp - 1 and out[-1][2] + (cp - out[-1][0]) == value:
+            out[-1] = (out[-1][0], cp, out[-1][2])
+        else:
+            out.append((cp, cp, value))
+    return out
+
+
 def write_mapping(w, name, mapping, width):
     w(f"static const CaseEntry {name}[{len(mapping)}] = {{\n")
     for cp, to in mapping:
@@ -81,12 +102,18 @@ def main():
                        ("kCaseIgnorable", ignorable),
                        ("kCased", cased),
                        ("kArabicScriptLetter", arabic_script_letter),
+                       ("kArabicNamedLetter", arabic_named_letter),
                       ):
         rs = ranges(pred)
         w(f"static const char32_t {name}[{len(rs)}][2] = {{\n")
         for lo, hi in rs:
             w(f"  {{0x{lo:X}, 0x{hi:X}}},\n")
         w("};\n\n")
+    runs = decimal_runs()
+    w(f"static const char32_t kDecimal[{len(runs)}][3] = {{\n")
+    for lo, hi, value in runs:
+        w(f"  {{0x{lo:X}, 0x{hi:X}, {value}}},\n")
+    w("};\n")
 
 
 if __name__ == "__main__":

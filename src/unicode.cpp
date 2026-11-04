@@ -139,6 +139,21 @@ bool is_digit(char32_t c) { return in_ranges(kIsDigit, c); }
 bool is_nonspacing_mark(char32_t c) { return in_ranges(kNonspacingMark, c); }
 bool is_other_symbol(char32_t c) { return in_ranges(kOtherSymbol, c); }
 const char* unidata_version() { return kUnidataVersion; }
+bool is_arabic_named_letter(char32_t c) { return in_ranges(kArabicNamedLetter, c); }
+int decimal_value(char32_t c) {
+    size_t lo = 0, hi = std::size(kDecimal);
+    while (lo < hi) {
+        const size_t mid = (lo + hi) / 2;
+        if (c < kDecimal[mid][0]) {
+            hi = mid;
+        } else if (c > kDecimal[mid][1]) {
+            lo = mid + 1;
+        } else {
+            return static_cast<int>(kDecimal[mid][2] + (c - kDecimal[mid][0]));
+        }
+    }
+    return -1;
+}
 bool is_arabic_script_letter(char32_t c) { return in_ranges(kArabicScriptLetter, c); }
 
 bool all_alpha(U32View s) { return !s.empty() && std::all_of(s.begin(), s.end(), is_alpha); }

@@ -29,6 +29,10 @@ bool is_alpha(char32_t c);           // str.isalpha()
 bool is_digit(char32_t c);           // str.isdigit()
 bool is_nonspacing_mark(char32_t c);  // unicodedata.category(c) == "Mn"
 bool is_other_symbol(char32_t c);     // unicodedata.category(c) == "So"
+// Category L* and a unicodedata.name that starts with "ARABIC".
+bool is_arabic_named_letter(char32_t c);
+// unicodedata.decimal(c), the digit value that int() reads; -1 for none.
+int decimal_value(char32_t c);
 // Category Lo in the Arabic, Arabic Supplement, Arabic Extended-A and -B blocks.
 bool is_arabic_script_letter(char32_t c);
 

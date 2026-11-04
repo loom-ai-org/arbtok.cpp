@@ -7,10 +7,11 @@ written as compact JSON. An exception is recorded as {"err": "<class name>"},
 because the exception class is part of the contract. A Python set is written
 sorted, because its iteration order follows the hash seed.
 
-The inputs come from three places that the command line names: the tests/
+The inputs come from four places that the command line names: the tests/
 directory of the arbtok sdist, the gold sets of the arbtok repository at the
-commit of the reference release, and the reference installation itself (its
-bundled lexicons and the orthography2ipa specs).
+commit of the reference release, tests/ar_test.txt of that repository, and the
+reference installation itself (its bundled lexicons and the orthography2ipa
+specs).
 """
 import ast
 import csv
@@ -32,7 +33,7 @@ PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0
 #: The arbtok commit whose version.py is 0.0.2a71; the gold sets are read there.
 GOLD_COMMIT = "a95668cf097c5fcfb72b7ab75d7346579626e7a5"
 
-SOURCES = {"sdist_tests": None, "gold_dir": None}
+SOURCES = {"sdist_tests": None, "gold_dir": None, "corpus": None}
 
 # Strings that exercise the code-point layer: case mappings that change the
 # length, non-ASCII digits and spaces, combining marks, astral characters, and
@@ -148,6 +149,17 @@ def spec_exception_words():
     for code in arabic_lects():
         out += list((get(code).word_exceptions or {}).keys())
     return unique(out)
+
+
+def corpus_words(step):
+    """The Arabic word of every step-th line of tests/ar_test.txt (word<TAB>IPA), from the first line."""
+    lines = pathlib.Path(SOURCES["corpus"]).read_text(encoding="utf-8").splitlines()
+    return [line.split("\t")[0] for line in lines[::step]]
+
+
+def arabic_test_strings():
+    """The sdist test strings that hold a character of the Arabic block."""
+    return [s for s in test_strings() if any("\u0600" <= c <= "\u06ff" for c in s)]
 
 
 def words_of(texts):
