@@ -32,6 +32,7 @@ set(BUILD_TESTING "${_arbtok_build_testing}")
 if(NOT TARGET orthography2ipa::orthography2ipa)
     add_library(orthography2ipa::orthography2ipa ALIAS orthography2ipa)
 endif()
+include(cmake/onnxruntime.cmake)
 
 # ── Library ──────────────────────────────────────────────────────────────────
 # The data files are installed here, and the library looks here unless
@@ -66,6 +67,8 @@ add_library(arbtok
     src/gemination.cpp
     src/lattice.cpp
     src/tokenizer.cpp
+    src/ensemble.cpp
+    src/diacritize.cpp
 )
 add_library(arbtok::arbtok ALIAS arbtok)
 target_include_directories(arbtok
@@ -79,7 +82,7 @@ target_include_directories(arbtok
 target_include_directories(arbtok PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/orthography2ipa.cpp/src)
 # dialects.hpp and lattice.hpp hand out orthography2ipa types, so
 # orthography2ipa is part of the public interface.
-target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa PRIVATE arbtok::onnxruntime ${CMAKE_DL_LIBS})
 target_compile_definitions(arbtok PRIVATE ARBTOK_DEFAULT_DATA_DIR="${_arbtok_default_data}"
     ARBTOK_DATA_FROM_LIBDIR="${_arbtok_data_from_lib}" ARBTOK_DATA_FROM_BINDIR="${_arbtok_data_from_bin}")
 set_target_properties(arbtok PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -95,7 +98,9 @@ install(TARGETS arbtok EXPORT arbtokTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# data/ holds the bundled model under models/.
 install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR})
+arbtok_install_onnxruntime()
 install(EXPORT arbtokTargets
     NAMESPACE arbtok::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
@@ -170,6 +175,20 @@ if(ARBTOK_BUILD_TESTS)
             list(APPEND _parity_tests parity_dialects_${_k})
         endforeach()
     endif()
+
+    foreach(_t ensemble_parity ensemble_api)
+        add_executable(${_t} tests/${_t}.cpp)
+        target_include_directories(${_t} PRIVATE src)
+        target_link_libraries(${_t} PRIVATE arbtok ZLIB::ZLIB)
+    endforeach()
+    add_test(NAME ensemble_api COMMAND ensemble_api)
+    add_test(NAME ensemble_unicode_parity
+        COMMAND ensemble_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens/ensemble_unicode.jsonl.gz)
+    add_test(NAME ensemble_parity
+        COMMAND ensemble_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens/ensemble.jsonl.gz)
+    set_tests_properties(ensemble_parity PROPERTIES TIMEOUT 1800)
+    list(APPEND _parity_tests ensemble_api ensemble_unicode_parity ensemble_parity)
+
     foreach(_test IN LISTS _parity_tests)
         set_tests_properties(${_test} PROPERTIES ENVIRONMENT "ARBTOK_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data")
     endforeach()

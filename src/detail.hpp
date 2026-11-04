@@ -19,12 +19,16 @@ using U32View = std::u32string_view;
 U32 from_utf8(std::string_view text);
 std::string to_utf8(U32View text);
 
+// The Unicode version of the character tables: unicodedata.unidata_version.
+const char* unidata_version();
+
 // One code point.
 bool is_space(char32_t c);           // str.isspace()
 bool is_alnum(char32_t c);           // str.isalnum()
 bool is_alpha(char32_t c);           // str.isalpha()
 bool is_digit(char32_t c);           // str.isdigit()
 bool is_nonspacing_mark(char32_t c);  // unicodedata.category(c) == "Mn"
+bool is_other_symbol(char32_t c);     // unicodedata.category(c) == "So"
 // Category Lo in the Arabic, Arabic Supplement, Arabic Extended-A and -B blocks.
 bool is_arabic_script_letter(char32_t c);
 

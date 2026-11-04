@@ -137,6 +137,8 @@ bool is_alnum(char32_t c) { return in_ranges(kAlnum, c); }
 bool is_alpha(char32_t c) { return in_ranges(kIsAlpha, c); }
 bool is_digit(char32_t c) { return in_ranges(kIsDigit, c); }
 bool is_nonspacing_mark(char32_t c) { return in_ranges(kNonspacingMark, c); }
+bool is_other_symbol(char32_t c) { return in_ranges(kOtherSymbol, c); }
+const char* unidata_version() { return kUnidataVersion; }
 bool is_arabic_script_letter(char32_t c) { return in_ranges(kArabicScriptLetter, c); }
 
 bool all_alpha(U32View s) { return !s.empty() && std::all_of(s.begin(), s.end(), is_alpha); }
