@@ -32,7 +32,7 @@ A function raises the C++ class that stands for the Python exception: `arbtok::V
 
 ## Tests
 
-`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects into eight shards. `tests/parity/expected_divergences.tsv` lists the records that differ because orthography2ipa.cpp ports the lineage data of linguatag 0.1.3a1 and the goldens use linguatag 0.1.5a1. Each entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
+`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects into eight shards. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python, and holds no entry. An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
 
 To dump the goldens again, install the reference versions that `PARITY.md` names into a venv, then run the dumper with that interpreter:
 
