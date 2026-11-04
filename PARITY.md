@@ -24,7 +24,7 @@ The other packages that resolve with these under `uv --prerelease=allow` are: co
 
 The gold sets come from the arbtok repository at commit `a95668cf097c5fcfb72b7ab75d7346579626e7a5`, whose `version.py` is 0.0.2a71. The other test inputs come from the `tests/` directory of the 0.0.2a71 sdist and from the data that the installed wheel bundles. `tests/data/textnorm_calls.jsonl.gz` holds the 35138 distinct textnorm and util calls that the sdist test suite makes. `tools/goldens/record_calls.py` records them. The sdist has no `tests/voice_agent.py`, `scripts/` or `data/`, so the recording run takes them from the arbtok repository at the gold commit.
 
-orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned to `5d2343ad564aa33ac6633011a6b0897354651ebb` on its `correct-port` branch. That commit holds parity with orthography2ipa 7.114.16a1.
+orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned to `11da68ffe8101a3171061cf5eafdf3f376de48f8` on its `correct-port` branch. That commit holds parity with orthography2ipa 7.114.16a1 and linguatag 0.1.5a1.
 
 ## Public surface
 
@@ -449,7 +449,7 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | textnorm | a spoken date refuses the last day of a month | 93 of 334285 |
 | util | match_lang refuses a language at distance 10 | 4 of 18355 |
 | pyre | `\D` matches the decimal digits | 953 of 335607 |
-| dialects | `split("-x-")[-1]` keeps the hyphen | 1678 in 5 of 8 shards |
+| dialects | `split("-x-")[-1]` keeps the hyphen | 2656 of 147093, in each of the 8 shards |
 | stress | a negative proclitic_onset cuts one code point late | 6742 of 202430 |
 | sandhi | the pausal form applies when pausal is False | 310 of 34979 |
 | lattice | a kept alternative costs at least 0.5, not 1.0 | 87 of 28406 |
@@ -486,13 +486,12 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 | `orthography2ipa.phonetok._expand_arabic_gemination` | internal to the library, not in a header | `src/gemination.cpp` ports it |
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
-| `orthography2ipa.resolve` | orthography2ipa.cpp ports the lineage data of linguatag 0.1.3a1. The goldens use linguatag 0.1.5a1. In C++, `ar-TR`, `arb-TR`, `ara-TR`, `AR-TR` and `Ar-TR` give `ar`, and `apc-TR` gives `apc-TR-x-cukurova`. Python gives `apc-TR-x-cukurova` and `apc`. `afb-SA` gives `afb-SA-x-dawasir` in C++ and `afb` in Python. No golden record holds it, because `spec_for_lang` gives `afb` for it in both | 66 dialects records are listed in `tests/parity/expected_divergences.tsv`. The fix is loom-ai-org/orthography2ipa.cpp#52, which ports the linguatag 0.1.5a1 tables. A submodule re-pin follows it |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
 
 ## Expected divergences
 
-`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds the 66 dialects records of the `-TR` resolve gap and no other entry. The C++ line of each entry is the record that Python gives with linguatag 0.1.3a1.
+`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds no entry: every golden record gives the bytes of Python.
 
 ## espeak_wrapper and plugin
 
