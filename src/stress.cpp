@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "detail.hpp"
+#include "stress_detail.hpp"
 
 namespace arbtok::stress {
 

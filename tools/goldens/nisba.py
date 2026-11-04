@@ -14,7 +14,7 @@ def grid():
     out = []
     for stem, before, after in itertools.product(STEMS, MARKS, MARKS):
         out.append(stem + before + "ي" + after)
-    out += [w + "ي" for w in nisba.NOT_NISBA] + sorted(nisba.NOT_NISBA)
+    out += [w + "ي" for w in sorted(nisba.NOT_NISBA)] + sorted(nisba.NOT_NISBA)
     out += ["ي", "يي", "ْي", "aي", "abي", "ابي", "اباي", "ياي", "زاكي", "ىي", "ي\n", "عربي\n"]
     return out
 
