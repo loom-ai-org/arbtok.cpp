@@ -90,8 +90,10 @@ set_target_properties(arbtok PROPERTIES POSITION_INDEPENDENT_CODE ON)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(arbtok PRIVATE -Wall -Wextra -Wpedantic)
     # Python rounds each product and each sum. A fused multiply-add rounds once,
-    # so a lattice cost differs in the last bit on CPUs with FMA.
+    # so a lattice cost differs in the last bit on CPUs with FMA. The rescorers
+    # and the lattice costs of orthography2ipa follow the same rule.
     target_compile_options(arbtok PRIVATE -ffp-contract=off)
+    target_compile_options(orthography2ipa PRIVATE -ffp-contract=off)
 endif()
 
 install(TARGETS arbtok arbtok_numbers EXPORT arbtokTargets

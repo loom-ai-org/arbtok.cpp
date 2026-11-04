@@ -2,6 +2,7 @@
 
 #include "common.hpp"
 #include "modules.hpp"
+#include "stress_detail.hpp"
 
 namespace parity {
 
