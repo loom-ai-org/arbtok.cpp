@@ -1,0 +1,7 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(orthography2ipa)
+
+include("${CMAKE_CURRENT_LIST_DIR}/arbtokTargets.cmake")
+check_required_components(arbtok)
