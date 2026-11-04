@@ -430,7 +430,15 @@ The vocalize corpus runs `arbtok.vocalize(text, lect)` end to end: the word of e
 
 The env records of the lexicon and dialect_lexicon suites run one call under a fresh root directory with its own environment variables and files (`tools/goldens/envcase.py`). The Python call runs in a child interpreter, because `arbtok.lexicon` and `huggingface_hub` read the environment at import. The C++ call runs in the test process with the same variables set.
 
-The lexicon goldens do not hold the default stem lexicon. The source record holds its revision, the SHA-256 of the file, and the count and SHA-256 of its parsed entries and shares. The get records and the diacritize and fusion outputs hold the stems of 776 looked-up words.
+The goldens do not hold the default stem lexicon, which is GPL-2.0-derived data, or any text that comes from it. The dumper runs every corpus a second time in a child interpreter. Its Hugging Face cache holds the same revision of the lexicon, with the header row and no entries. A record whose line differs between the two runs depends on the stem lexicon. The golden keeps the input items of that record. In place of each result item it holds `{"sha256": <hex>}`, where `<hex>` is the SHA-256 of the Python line. `arbtok_parity` writes the C++ line of the record and compares its SHA-256. A mismatch prints the C++ line and both digests. The header of the file gives the count of hashed records as `sha256_records`. The test fails when the file holds another count.
+
+| Golden | Hashed records |
+| --- | --- |
+| lexicon | 2830: source 1, get 2586, ambiguous 91, contains 151, len 1 |
+| diacritize | 14249: word 7304, text 372, vocalize 6573 |
+| fusion | 5678: fusion 5678 |
+
+The other 16 golden files hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
 
 `tests/goldens/ensemble.jsonl.gz` (32432 records) and `tests/goldens/ensemble_unicode.jsonl.gz` (44152 records) hold the goldens of the ensemble. `ensemble_parity` compares them, and the logits of 32306 records are bit-identical to those of onnxruntime in Python on the same machine.
 
@@ -457,13 +465,16 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | version | VERSION_ALPHA is 70 | 1 of 5 |
 | lexicon | an ambiguous spelling steps aside only in a sentence of more than MIN_CONTEXT_WORDS words | 1051 of 41546 |
 | lexicon | the cache directory is `arbtok/lexicon` | 8 of 41546 |
+| lexicon | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 3 of 41546 |
 | dialect_lexicon | the parent's file wins over the lect's own file | 14 of 77525 |
 | donor_lexicon | ensure_registered replaces a caller's registration | 8 of 33 |
 | diacritize | the article allows only its lam to be open | 3432 of 306569 |
 | diacritize | a two-letter word with a bare proclitic counts as proclitic | 435 of 306569 |
 | diacritize | a whitespace-only word gets a record | 11 of 306569 |
+| diacritize | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 36 of 306569 |
 | fusion | logprobs sums the exps in order, not pairwise | 11301 of 29945 |
 | fusion | logprobs uses the libm `std::exp` | 5027 of 29945 |
+| fusion | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 78 of 29945 |
 
 Two fusion mutations survive. Equal log-probabilities in ascending index order give 0 mismatches, because no tie among the top classes occurs on the corpus. A lattice weight of the opposite sign gives 0 mismatches, because the lattice cost of every licensed reading is 0.0 in Python too: each slot's top candidate costs 0.0 in the specs of these lects (73992 n-best entries in the fusion goldens, 7959 slots in the lattice goldens).
 

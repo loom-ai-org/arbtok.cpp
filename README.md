@@ -54,4 +54,4 @@ HF_HUB_OFFLINE=1 python -I tools/dump_goldens.py --out-dir tests/goldens \
     --corpus <arbtok repository at the gold commit>/tests/ar_test.txt
 ```
 
-The dumper stops when an installed reference package has another version than `PARITY.md` names. It prints the input count and the record count of each corpus. It counts the records again in each file it writes, and stops when the counts differ. `tools/inventory.py` writes the surface table of `PARITY.md` and fails when a name marked as ported is missing from its header.
+The dumper runs the corpora a second time with an empty stem lexicon, and writes each record that depends on the stem lexicon as the SHA-256 of its line (see `PARITY.md`). The dumper stops when an installed reference package has another version than `PARITY.md` names. It prints the input count and the record count of each corpus. It counts the records again in each file it writes, and stops when the counts differ. `tools/inventory.py` writes the surface table of `PARITY.md` and fails when a name marked as ported is missing from its header.

@@ -3,7 +3,10 @@
 A golden file is tests/goldens/<module>.jsonl.gz. Its first line is a header
 with the reference versions, the input sources, the record count and the count
 per corpus. Each other line is one record: [function, arguments..., result],
-written as compact JSON. An exception is recorded as {"err": "<class name>"},
+written as compact JSON. A record whose line changes when the stem lexicon has
+no entries holds {"sha256": <hex>} in place of each result item, where <hex>
+is the SHA-256 of the UTF-8 line. The header then gives the count of those
+records as "sha256_records". An exception is recorded as {"err": "<class name>"},
 because the exception class is part of the contract. A Python set is written
 sorted, because its iteration order follows the hash seed.
 
@@ -16,6 +19,7 @@ specs).
 import ast
 import csv
 import gzip
+import hashlib
 import importlib.metadata
 import io
 import json
@@ -169,24 +173,59 @@ def words_of(texts):
     return unique(out)
 
 
-def write(path, module, corpora):
-    """corpora: [(corpus name, input count, records)].
+#: The number of result items at the end of a record, where it is not one.
+RESULT_ITEMS = {("diacritize", "word"): 2}
 
-    The header holds the input count of each corpus. After the file is written,
-    its records are counted again from the file, and the file must hold one
-    record for each input. The C++ test also compares the header count with the
+
+def hashed(module, record, line):
+    """The record with each result item replaced by the SHA-256 of its line."""
+    n = RESULT_ITEMS.get((module, record[0]), 1)
+    digest = {"sha256": hashlib.sha256(line.encode("utf-8")).hexdigest()}
+    return dumps(record[:-n] + [digest] * n)
+
+
+def write_lines(path, corpora):
+    """The records of corpora as lines, with no header and no hashing: the output of the stem-free dump."""
+    with open(path, "w", encoding="utf-8") as fh:
+        for _, _, records in corpora:
+            for r in records:
+                fh.write(dumps(r) + "\n")
+
+
+def write(path, module, corpora, stem_free):
+    """corpora: [(corpus name, input count, records)]. stem_free: the lines of the
+    same records, dumped with a stem lexicon that has no entries.
+
+    The header holds the input count of each corpus. A record whose line differs
+    from its stem-free line is written hashed. After the file is written, its
+    records are counted again from the file, and the file must hold one record
+    for each input. The C++ test also compares the header count with the
     records it reads.
     """
     lines = []
     counts = {}
+    n_hashed = 0
     for name, n_in, records in corpora:
         counts[name] = n_in
-        lines.extend(dumps(r) for r in records)
-        print(f"  {module}/{name}: {n_in} in, {len(records)} out", file=sys.stderr)
+        corpus_hashed = 0
+        for r in records:
+            line = dumps(r)
+            if len(lines) >= len(stem_free):
+                raise SystemExit(f"{module}: the stem-free dump has only {len(stem_free)} records")
+            if line != stem_free[len(lines)]:
+                line = hashed(module, r, line)
+                corpus_hashed += 1
+            lines.append(line)
+        n_hashed += corpus_hashed
+        print(f"  {module}/{name}: {n_in} in, {len(records)} out, {corpus_hashed} hashed", file=sys.stderr)
         if n_in != len(records):
             raise SystemExit(f"{module}/{name}: {n_in} inputs gave {len(records)} records")
+    if len(lines) != len(stem_free):
+        raise SystemExit(f"{module}: {len(lines)} records, the stem-free dump has {len(stem_free)}")
     header = {"module": module, "versions": versions(), "gold_commit": GOLD_COMMIT, "corpora": counts,
               "count": sum(counts.values())}
+    if n_hashed:
+        header["sha256_records"] = n_hashed
     raw = io.BytesIO()
     with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, filename="") as gz:
         gz.write((dumps(header) + "\n").encode("utf-8"))
