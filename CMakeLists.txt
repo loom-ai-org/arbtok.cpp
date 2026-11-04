@@ -33,6 +33,10 @@ if(NOT TARGET orthography2ipa::orthography2ipa)
     add_library(orthography2ipa::orthography2ipa ALIAS orthography2ipa)
 endif()
 
+# The Arabic parts of ovos-number-parser, ovos-date-parser and unicode-rbnf
+# that textnorm and util call. Their tables are compiled into the library.
+add_subdirectory(src/numbers)
+
 # ── Library ──────────────────────────────────────────────────────────────────
 # The data files are installed here, and the library looks here unless
 # set_data_dir() or ARBTOK_DATA_DIR names another directory.
@@ -79,7 +83,7 @@ target_include_directories(arbtok
 target_include_directories(arbtok PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/orthography2ipa.cpp/src)
 # dialects.hpp and lattice.hpp hand out orthography2ipa types, so
 # orthography2ipa is part of the public interface.
-target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa arbtok::numbers PRIVATE ${CMAKE_DL_LIBS})
 target_compile_definitions(arbtok PRIVATE ARBTOK_DEFAULT_DATA_DIR="${_arbtok_default_data}"
     ARBTOK_DATA_FROM_LIBDIR="${_arbtok_data_from_lib}" ARBTOK_DATA_FROM_BINDIR="${_arbtok_data_from_bin}")
 set_target_properties(arbtok PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -90,12 +94,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(arbtok PRIVATE -ffp-contract=off)
 endif()
 
-install(TARGETS arbtok EXPORT arbtokTargets
+install(TARGETS arbtok arbtok_numbers EXPORT arbtokTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR})
+install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR} PATTERN numbers EXCLUDE)
 install(EXPORT arbtokTargets
     NAMESPACE arbtok::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
