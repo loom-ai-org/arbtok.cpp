@@ -64,6 +64,11 @@ add_library(arbtok
     src/arabizi.cpp
     src/unicode_symbol2label.cpp
     src/textnorm.cpp
+    src/textnorm_detail.cpp
+    src/textnorm_asr.cpp
+    src/textnorm_tts.cpp
+    src/pyre.cpp
+    src/util.cpp
     src/dialects.cpp
     src/stress.cpp
     src/sandhi.cpp
@@ -131,6 +136,8 @@ if(ARBTOK_BUILD_TESTS)
         tests/parity/arabizi.cpp
         tests/parity/unicode_symbol2label.cpp
         tests/parity/textnorm.cpp
+        tests/parity/util.cpp
+        tests/parity/pyre.cpp
         tests/parity/dialects.cpp
         tests/parity/stress.cpp
         tests/parity/sandhi.cpp
@@ -141,7 +148,8 @@ if(ARBTOK_BUILD_TESTS)
     target_include_directories(arbtok_parity PRIVATE tests)
     # The headers under src/ expose the private functions the goldens call.
     target_include_directories(arbtok_parity PRIVATE src)
-    target_compile_definitions(arbtok_parity PRIVATE ARBTOK_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+    target_compile_definitions(arbtok_parity PRIVATE ARBTOK_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+        ARBTOK_GOLDENS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens")
     target_link_libraries(arbtok_parity PRIVATE arbtok orthography2ipa::orthography2ipa ZLIB::ZLIB Threads::Threads)
     # One parity test per module, so that ctest -j runs the modules in parallel
     # and the timeout applies to each module.
@@ -176,6 +184,12 @@ if(ARBTOK_BUILD_TESTS)
             list(APPEND _parity_tests parity_dialects_${_k})
         endforeach()
     endif()
+
+    add_executable(arbtok_exceptions tests/exceptions.cpp)
+    target_link_libraries(arbtok_exceptions PRIVATE arbtok)
+    add_test(NAME exceptions COMMAND arbtok_exceptions)
+    list(APPEND _parity_tests exceptions)
+
     foreach(_test IN LISTS _parity_tests)
         set_tests_properties(${_test} PROPERTIES ENVIRONMENT "ARBTOK_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data")
     endforeach()

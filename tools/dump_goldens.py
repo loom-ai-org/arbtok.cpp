@@ -34,6 +34,8 @@ MODULES = [
     "lattice",
     "tokenizer",
     "version",
+    "util",
+    "pyre",
 ]
 
 

@@ -17,6 +17,8 @@
     X(arabizi)                   \
     X(unicode_symbol2label)      \
     X(textnorm)                  \
+    X(util)                      \
+    X(pyre)                      \
     X(dialects)                  \
     X(stress)                    \
     X(sandhi)                    \

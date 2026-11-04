@@ -32,6 +32,15 @@ struct KeyError : Error {
 struct TypeError : Error {
     explicit TypeError(const std::string& message) : Error("TypeError", message) {}
 };
+struct IndexError : Error {
+    explicit IndexError(const std::string& message) : Error("IndexError", message) {}
+};
+struct OverflowError : Error {
+    explicit OverflowError(const std::string& message) : Error("OverflowError", message) {}
+};
+struct NotImplementedError : Error {
+    explicit NotImplementedError(const std::string& message) : Error("NotImplementedError", message) {}
+};
 
 // The directory that holds the data files. The first of these that is set
 // wins: set_data_dir(), the ARBTOK_DATA_DIR environment variable, the data
