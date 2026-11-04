@@ -3,9 +3,11 @@
 // compares the bytes.
 //
 // --divergences <file> names the records that are known not to match until
-// a dependency fix lands. A listed record that mismatches is counted apart;
-// a listed record that matches, or that is not in the goldens, fails the run,
-// so that the list shrinks when the fix lands.
+// a dependency fix lands, with the C++ line that each one gives. A listed
+// record that gives that C++ line is counted apart. A listed record that gives
+// another C++ line is a mismatch. A listed record that matches Python, or that
+// is not in the goldens, fails the run, so that the list shrinks when the fix
+// lands.
 //
 // --shard k/n checks the records whose index modulo n is k, so that ctest can
 // run the large modules in parallel processes. --mismatches <file> writes each
@@ -30,11 +32,17 @@ struct Tally {
     long expected = 0, read = 0, checked = 0, mismatches = 0, divergences = 0, stale = 0;
 };
 
-// (module, golden line) -> the fix the record waits on.
-using Divergences = std::map<std::pair<std::string, std::string>, std::string>;
+struct Divergence {
+    std::string cpp;  // the line that the C++ gives
+    std::string fix;  // the fix the record waits on
+};
 
-// One entry per line: module, the golden line, the fix it waits on,
-// separated by tabs. A line that starts with '#' is a comment.
+// (module, golden line) -> the expected C++ line and the fix.
+using Divergences = std::map<std::pair<std::string, std::string>, Divergence>;
+
+// One entry per line: module, the golden line, the C++ line, the fix it waits
+// on, separated by tabs. A line that starts with '#' is a comment. A JSON line
+// holds no tab, because JSON escapes it.
 Divergences read_divergences(const std::string& path) {
     std::ifstream in(path);
     if (!in) throw std::runtime_error("cannot read " + path);
@@ -43,10 +51,12 @@ Divergences read_divergences(const std::string& path) {
     while (std::getline(in, line)) {
         if (!line.empty() && line.back() == '\r') line.pop_back();
         if (line.empty() || line[0] == '#') continue;
-        const size_t a = line.find('\t'), b = line.rfind('\t');
-        if (std::count(line.begin(), line.end(), '\t') != 2)
-            throw std::runtime_error("divergence line does not have three tab-separated fields: " + line);
-        out[{line.substr(0, a), line.substr(a + 1, b - a - 1)}] = line.substr(b + 1);
+        if (std::count(line.begin(), line.end(), '\t') != 3)
+            throw std::runtime_error("divergence line does not have four tab-separated fields: " + line);
+        const size_t a = line.find('\t'), b = line.find('\t', a + 1), c = line.find('\t', b + 1);
+        const auto key = std::make_pair(line.substr(0, a), line.substr(a + 1, b - a - 1));
+        if (out.count(key)) throw std::runtime_error("divergence line is listed twice: " + line);
+        out[key] = {line.substr(b + 1, c - b - 1), line.substr(c + 1)};
     }
     return out;
 }
@@ -66,7 +76,7 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
     // The listed lines the whole file holds: a listed divergence is stale only
     // when the file lacks it, whichever shard runs.
     std::set<std::string> seen;
-    for (const auto& [key, fix] : divergences)
+    for (const auto& [key, divergence] : divergences)
         if (key.first == module) seen.insert(key.second);
     std::set<std::string> present;
     for (size_t i = 1; i < lines.size(); ++i)
@@ -85,18 +95,25 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
         ++t.checked;
         const auto listed = divergences.find({module, lines[i]});
         if (listed != divergences.end()) {
+            const Divergence& d = listed->second;
             if (got == lines[i]) {
                 ++t.stale;
-                std::cerr << "LISTED DIVERGENCE NOW MATCHES " << module << " (" << listed->second
+                std::cerr << "LISTED DIVERGENCE NOW MATCHES " << module << " (" << d.fix
                           << "): remove it from the list\n  python: " << lines[i].substr(0, 3000) << "\n";
-            } else {
-                ++t.divergences;
-                std::cerr << "EXPECTED DIVERGENCE " << module << " (" << listed->second << ")\n  python: "
-                          << lines[i].substr(0, 3000) << "\n  c++:    " << got.substr(0, 3000) << "\n";
+                continue;
             }
+            if (got == d.cpp) {
+                ++t.divergences;
+                std::cerr << "EXPECTED DIVERGENCE " << module << " (" << d.fix << ")\n  python: "
+                          << lines[i].substr(0, 3000) << "\n  c++:    " << got.substr(0, 3000) << "\n";
+                continue;
+            }
+            std::cerr << "LISTED DIVERGENCE GIVES ANOTHER C++ LINE " << module << " (" << d.fix
+                      << ")\n  python: " << lines[i].substr(0, 3000) << "\n  listed: " << d.cpp.substr(0, 3000)
+                      << "\n  c++:    " << got.substr(0, 3000) << "\n";
+        } else if (got == lines[i]) {
             continue;
         }
-        if (got == lines[i]) continue;
         if (mismatches != nullptr) *mismatches << lines[i] << "\n";
         ++by_function[v.size() ? v[0].str : "?"];
         if (++t.mismatches <= shown) {
@@ -104,10 +121,11 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
                       << "\n  c++:    " << got.substr(0, 3000) << "\n";
         }
     }
-    for (const auto& [key, fix] : divergences) {
+    for (const auto& [key, divergence] : divergences) {
         if (key.first == module && !present.count(key.second)) {
             ++t.stale;
-            std::cerr << "LISTED DIVERGENCE NOT IN THE GOLDENS " << module << " (" << fix << ")\n  python: "
+            std::cerr << "LISTED DIVERGENCE NOT IN THE GOLDENS " << module << " (" << divergence.fix
+                      << ")\n  python: "
                       << key.second.substr(0, 3000) << "\n";
         }
     }
@@ -134,10 +152,11 @@ struct Options {
 };
 
 int run_all(const Options& opt) {
-    for (const auto& [key, fix] : opt.divergences) {
+    for (const auto& [key, divergence] : opt.divergences) {
         const auto& names = module_names();
         if (std::find(names.begin(), names.end(), key.first) == names.end())
-            throw std::runtime_error("divergence row names an unknown module \"" + key.first + "\" (" + fix + ")");
+            throw std::runtime_error("divergence row names an unknown module \"" + key.first + "\" (" +
+                                     divergence.fix + ")");
     }
     auto selected = [&](const std::string& name) {
         return opt.modules.empty() || std::find(opt.modules.begin(), opt.modules.end(), name) != opt.modules.end();

@@ -24,8 +24,11 @@ import sys
 import unicodedata
 
 REFERENCE = ("arbtok", "orthography2ipa", "langcodes", "linguatag", "ovos-spec-tools")
-#: The versions the port is held to. The other REFERENCE packages are recorded, not pinned.
-PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1"}
+#: The versions the port is held to. linguatag, langcodes and ovos-spec-tools are the versions that
+#: resolve with arbtok and orthography2ipa under `uv --prerelease=allow`. They decide how a language tag
+#: resolves, so a re-dump with other versions can change the dialects records.
+PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
+          "ovos-spec-tools": "1.17.1a1"}
 #: The arbtok commit whose version.py is 0.0.2a71; the gold sets are read there.
 GOLD_COMMIT = "a95668cf097c5fcfb72b7ab75d7346579626e7a5"
 
@@ -155,17 +158,23 @@ def words_of(texts):
 
 
 def write(path, module, corpora):
-    """corpora: [(corpus name, inputs, records)]. Prints N in and N out per corpus."""
+    """corpora: [(corpus name, input count, records)].
+
+    The header holds the input count of each corpus. After the file is written,
+    its records are counted again from the file, and the file must hold one
+    record for each input. The C++ test also compares the header count with the
+    records it reads.
+    """
     lines = []
     counts = {}
     for name, n_in, records in corpora:
-        counts[name] = len(records)
+        counts[name] = n_in
         lines.extend(dumps(r) for r in records)
         print(f"  {module}/{name}: {n_in} in, {len(records)} out", file=sys.stderr)
         if n_in != len(records):
             raise SystemExit(f"{module}/{name}: {n_in} inputs gave {len(records)} records")
     header = {"module": module, "versions": versions(), "gold_commit": GOLD_COMMIT, "corpora": counts,
-              "count": len(lines)}
+              "count": sum(counts.values())}
     raw = io.BytesIO()
     with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, filename="") as gz:
         gz.write((dumps(header) + "\n").encode("utf-8"))
@@ -173,11 +182,15 @@ def write(path, module, corpora):
             gz.write((line + "\n").encode("utf-8"))
     with open(path, "wb") as fh:
         fh.write(raw.getvalue())
-    print(f"{path}: {len(lines)} records", file=sys.stderr)
-    return len(lines)
+    with gzip.open(path, "rb") as fh:
+        written = fh.read().count(b"\n") - 1
+    if written != header["count"]:
+        raise SystemExit(f"{path}: {header['count']} inputs, {written} records in the file")
+    print(f"{path}: {written} records", file=sys.stderr)
+    return written
 
 
 def corpus(name, inputs, fn):
-    """One corpus: fn(input) -> record for each input, with the count of inputs kept."""
+    """One corpus: fn(input) -> record for each input. The input count is taken before fn runs."""
     inputs = list(inputs)
     return name, len(inputs), [fn(x) for x in inputs]

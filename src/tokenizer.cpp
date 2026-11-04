@@ -14,6 +14,7 @@
 #include "arbtok/sandhi.hpp"
 #include "arbtok/stress.hpp"
 #include "detail.hpp"
+#include "stress_detail.hpp"
 #include "unicode_norm.hpp"
 
 namespace arbtok::tokenizer {

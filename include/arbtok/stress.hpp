@@ -14,8 +14,4 @@ std::string stress_ipa(const std::string& ipa, const std::string& lang = "ar", i
 // stress_ipa over each space-separated word of an utterance.
 std::string stress_words(const std::string& ipa, const std::string& lang = "ar");
 
-// The length in code points of the first segment of ipa: a base character and
-// the modifiers on it.
-int first_segment_len(const std::string& ipa);
-
 }  // namespace arbtok::stress

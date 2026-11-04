@@ -4,7 +4,7 @@ arbtok.cpp gives the same bytes as one release of the Python package for each na
 
 ## Reference
 
-The goldens are dumped from these versions. Each golden file names them in its header. `tools/dump_goldens.py` stops when the installed arbtok or orthography2ipa has another version.
+The goldens are dumped from these versions. Each golden file names them in its header. `tools/dump_goldens.py` pins the five packages and stops when an installed one has another version. The linguatag, langcodes and ovos-spec-tools versions are the ones that resolve with the first two under `uv --prerelease=allow`. linguatag and langcodes decide how a language tag resolves. Other versions can change the dialects records.
 
 | Package | Version |
 | --- | --- |
@@ -400,7 +400,7 @@ The count covers 25 modules and the package itself: each module-level name, each
 
 ## Goldens
 
-A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header with the reference versions, the gold commit and the count per corpus. Each other line is one record, `[function, arguments..., result]`, in compact JSON. An exception is `{"err": "<Python class>"}`. A float is its Python `repr` string. `tools/dump_goldens.py` prints the input count and the record count of each corpus and stops when they differ.
+A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header with the reference versions, the gold commit and the count per corpus. Each other line is one record, `[function, arguments..., result]`, in compact JSON. An exception is `{"err": "<Python class>"}`. A float is its Python `repr` string. The header holds the input count of each corpus. `tools/dump_goldens.py` prints the input count and the record count of each corpus. After it writes a file, it counts the records in the file again. It stops when that count is not the sum of the input counts. `arbtok_parity` fails when a file does not hold the record count of its header.
 
 | Module | Corpora | Records |
 | --- | --- | --- |
@@ -423,7 +423,7 @@ The inputs are the string literals of the sdist tests, the gold sentences, the b
 
 The `o2i_calls` corpus records each call that `dialects` makes into orthography2ipa (`resolve`, `resolves_exactly`) and into langcodes (`closest_match`), with the arguments that arbtok passes. The C++ resolution layer is checked on the inputs it receives.
 
-Each golden suite has a mutation control: one rule is broken in the C++, and the suite must fail. The fail logs are in `knowledge/wiki/audits/arbtok-cpp/phase1/mutations/` of the workspace.
+Each golden suite has a mutation control: one rule is broken in the C++, and the suite must fail. The table gives the mismatches that each mutation causes.
 
 | Suite | Mutation | Mismatches |
 | --- | --- | --- |
@@ -469,13 +469,13 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 | `orthography2ipa.phonetok._expand_arabic_gemination` | internal to the library, not in a header | `src/gemination.cpp` ports it |
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
-| `orthography2ipa.resolve` | `ar-TR`, `arb-TR`, `ara-TR`, `AR-TR` and `Ar-TR` give `ar`, and `apc-TR` gives `apc-TR-x-cukurova`; Python gives `apc-TR-x-cukurova` and `apc`. The linguatag distance from `apc-TR` to `apc-TR-x-cukurova` is 2 in C++ and 4 in Python | 66 dialects records are listed in `tests/parity/expected_divergences.tsv` |
+| `orthography2ipa.resolve` | orthography2ipa.cpp ports the lineage data of linguatag 0.1.3a1. The goldens use linguatag 0.1.5a1. In C++, `ar-TR`, `arb-TR`, `ara-TR`, `AR-TR` and `Ar-TR` give `ar`, and `apc-TR` gives `apc-TR-x-cukurova`. Python gives `apc-TR-x-cukurova` and `apc`. `afb-SA` gives `afb-SA-x-dawasir` in C++ and `afb` in Python. No golden record holds it, because `spec_for_lang` gives `afb` for it in both | 66 dialects records are listed in `tests/parity/expected_divergences.tsv`. The fix is loom-ai-org/orthography2ipa.cpp#52, which ports the linguatag 0.1.5a1 tables. A submodule re-pin follows it |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
 
 ## Expected divergences
 
-`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above, with the fix it waits on. A listed record that starts to match fails the suite, so the list cannot go stale. The list holds the 66 dialects records of the `-TR` resolve gap and no other entry.
+`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds the 66 dialects records of the `-TR` resolve gap and no other entry. The C++ line of each entry is the record that Python gives with linguatag 0.1.3a1.
 
 ## espeak_wrapper and plugin
 
