@@ -44,7 +44,7 @@ A function raises the C++ class that stands for the Python exception: `arbtok::V
 
 ## Tests
 
-`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. `tests/parity/expected_divergences.tsv` lists the records that differ because orthography2ipa.cpp ports the lineage data of linguatag 0.1.3a1 and the goldens use linguatag 0.1.5a1. Each entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
+`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python, and holds no entry. An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
 
 The goldens of the model hold the onnxruntime output of one CPU class, which their header names (see `PARITY.md`). On a CPU of another class, these tests fail with a message that names both classes. To test on such a CPU, dump the model goldens on it first:
 
