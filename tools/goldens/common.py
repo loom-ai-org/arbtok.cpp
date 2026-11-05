@@ -30,12 +30,13 @@ import random
 import sys
 import unicodedata
 
-REFERENCE = ("arbtok", "orthography2ipa", "langcodes", "linguatag", "ovos-spec-tools")
 #: The versions the port is held to. linguatag, langcodes and ovos-spec-tools are the versions that
 #: resolve with arbtok and orthography2ipa under `uv --prerelease=allow`. They decide how a language tag
-#: resolves, so a re-dump with other versions can change the dialects records.
+#: resolves, so a re-dump with other versions can change the dialects records. The number and date
+#: parsers are the versions that the textnorm and util records speak with and that src/numbers ports.
 PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
-          "ovos-spec-tools": "1.17.1a1"}
+          "ovos-spec-tools": "1.17.1a1", "ovos-number-parser": "0.24.3a1", "ovos-date-parser": "0.35.7a1",
+          "unicode-rbnf": "2.4.1", "chronologia": "0.31.7a2", "dateparser": "1.5.0"}
 #: The packages that compute the model output and the log-probabilities: onnxruntime is the version of the C++
 #: tarball, and fusion.logprobs replicates the numpy loops of this numpy.
 RUNTIME = {"onnxruntime": "1.31.1", "numpy": "2.5.4"}
@@ -67,12 +68,13 @@ def call(fn, *args, **kwargs):
 
 
 def versions():
+    """The version of each pinned package, of Python and of its Unicode database, for a golden header."""
     pins = PINNED | RUNTIME
     wrong = {name: importlib.metadata.version(name) for name, version in pins.items()
              if importlib.metadata.version(name) != version}
     if wrong:
         raise SystemExit(f"the reference environment has {wrong}, the port is held to {pins}")
-    out = {name: importlib.metadata.version(name) for name in REFERENCE}
+    out = {name: importlib.metadata.version(name) for name in PINNED}
     out["python"] = sys.version.split()[0]
     out["unicode"] = unicodedata.unidata_version
     return out
@@ -80,6 +82,14 @@ def versions():
 
 def unique(items):
     return list(dict.fromkeys(items))
+
+
+def deduplicated(records):
+    """The records without the repeats of an earlier record, and the number of repeats."""
+    first = {}
+    for r in records:
+        first.setdefault(dumps(r), r)
+    return list(first.values()), len(records) - len(first)
 
 
 def fuzz_strings(seed, count, alphabet, max_len=12):

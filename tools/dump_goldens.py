@@ -68,6 +68,8 @@ MODULES = [
     "lattice",
     "tokenizer",
     "version",
+    "util",
+    "pyre",
     "lexicon",
     "dialect_lexicon",
     "donor_lexicon",

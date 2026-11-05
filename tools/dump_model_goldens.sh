@@ -10,9 +10,11 @@
 # test against them. The re-dumped ensemble golden holds the raw logits of
 # every record, so ensemble_parity checks the tolerance on all of them. The
 # script fails when a re-dumped golden has other corpus counts than the
-# committed one. --check also dumps every other golden and fails unless its
-# records are byte-identical to the committed file, and does the same for a
-# model golden whose class is the class of this CPU.
+# committed one. --check also dumps every other golden that dump_goldens.py or
+# ensemble_unicode.py writes, and fails unless its records are byte-identical
+# to the committed file. It does the same for a model golden whose class is
+# the class of this CPU. The numbers goldens come from their own scripts under
+# tools/goldens, and --check names them without a dump.
 #
 # It needs uv, curl, the stem lexicon in the Hugging Face cache (see README),
 # and about 3 GB in <out dir>.work for the reference venv and the sources.
@@ -70,7 +72,8 @@ model=()
 other=()
 for f in "$root"/tests/goldens/*.jsonl.gz; do
     name=$(basename "$f" .jsonl.gz)
-    golden_class=$("$py" -I -c 'import gzip, json, sys; print(json.loads(gzip.open(sys.argv[1], "rt").readline()).get("cpu_class", ""))' "$f")
+    # numbers_calls holds recorded calls and no header line.
+    golden_class=$("$py" -I -c 'import gzip, json, sys; h = json.loads(gzip.open(sys.argv[1], "rt").readline()); print(h.get("cpu_class", "") if isinstance(h, dict) else "")' "$f")
     if [ -n "$golden_class" ]; then
         model+=("$name")
         echo "model golden $name: committed class $golden_class"
@@ -123,10 +126,21 @@ echo "dumped ${#model[@]} model goldens for class $here into $out: ${model[*]}"
 same() { cmp -s <(gzip -dc "$1") <(gzip -dc "$2"); }
 
 if [ "$check" = --check ]; then
-    mkdir -p "$work/check"
-    dump "$work/check" "${other[@]}"
-    bad=0
+    dumpable=" ensemble_unicode $("$py" -I - "$root/tools/dump_goldens.py" <<'PY'
+import ast, sys
+for node in ast.parse(open(sys.argv[1]).read()).body:
+    if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "MODULES":
+        print(" ".join(ast.literal_eval(node.value)))
+PY
+) "
+    checked=()
     for m in "${other[@]}"; do
+        if [[ $dumpable == *" $m "* ]]; then checked+=("$m"); else echo "not dumped by this script: $m"; fi
+    done
+    mkdir -p "$work/check"
+    dump "$work/check" "${checked[@]}"
+    bad=0
+    for m in "${checked[@]}"; do
         if same "$work/check/$m.jsonl.gz" "$root/tests/goldens/$m.jsonl.gz"; then
             echo "identical: $m"
         else

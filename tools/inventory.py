@@ -24,8 +24,8 @@ BEGIN, END = "<!-- inventory:begin -->", "<!-- inventory:end -->"
 # NAMESPACE gives), their header include/arbtok/<namespace>.hpp, and each name
 # keeps its Python spelling unless RENAMED gives another.
 PORTED = {"_ensemble", "arabizi", "constants", "diacritize", "dialect_lexicon", "dialects", "donor_lexicon", "fusion",
-          "lattice", "lexicon", "nisba", "orthography", "sandhi", "stress", "tashkeel", "tokenizer",
-          "unicode_symbol2label", "version", "waqf"}
+          "lattice", "lexicon", "nisba", "orthography", "sandhi", "stress", "tashkeel", "textnorm", "tokenizer",
+          "unicode_symbol2label", "util", "version", "waqf"}
 NAMESPACE = {"_ensemble": "ensemble"}
 RENAMED = {
     "_ensemble.DEFAULT_ENSEMBLE_ONNX": "default_ensemble_onnx()",
@@ -34,10 +34,10 @@ RENAMED = {
     "lexicon.CACHE_DIR": "cache_dir()",
     "unicode_symbol2label.UNICODE_SYMBOL_TO_LABEL": "items(), get()",
 }
-# Names of a ported module that a later phase ports, and names of the other
-# modules that this phase ports.
+# Names of a ported module that a later phase ports, and names of a ported
+# module that the port leaves out.
 LATER_IN_PORTED = {}
-PORTED_ELSEWHERE = {"textnorm.ARABIC_LANGUAGE_CODES", "textnorm.is_arabic_lang"}
+NOT_PORTED_NAMES = {"util.LOG": "not ported: the Python logger; the port writes no log"}
 # The package __all__: the module each re-exported name comes from.
 REEXPORTS = {"AsrNorm": "textnorm", "Lect": "dialects", "TtsNorm": "textnorm", "__version__": "version",
              "is_arabic_lang": "textnorm", "normalize_asr": "textnorm", "normalize_for_tts": "textnorm",
@@ -113,7 +113,7 @@ def rows(package_dir):
                 key = f"{source}.{name}"
                 if source == "__init__" and name in PACKAGE_FUNCTIONS:
                     out.append(("arbtok", name, cpp_name("arbtok", name), "ported", "arbtok", name))
-                elif source in PORTED or key in PORTED_ELSEWHERE:
+                elif source in PORTED:
                     target = REEXPORT_TARGET.get(name, name)
                     out.append(("arbtok", name, cpp_name(source, target), "ported", source, target))
                 else:
@@ -125,7 +125,9 @@ def rows(package_dir):
                 out.append((module, name, "", NOT_PORTED[module], None, None))
             elif key in LATER_IN_PORTED:
                 out.append((module, name, "", f"phase {LATER_IN_PORTED[key]}", None, None))
-            elif module in PORTED or key in PORTED_ELSEWHERE:
+            elif key in NOT_PORTED_NAMES:
+                out.append((module, name, "", NOT_PORTED_NAMES[key], None, None))
+            elif module in PORTED:
                 target = RENAMED.get(key, name.replace(".", "::"))
                 out.append((module, name, cpp_name(module, name), "ported", module, target))
             else:

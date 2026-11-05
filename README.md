@@ -2,7 +2,7 @@
 
 A C++17 port of [arbtok](https://github.com/TigreGotico/arbtok), rule-based Arabic text-to-IPA with tashkeel diacritization. For each function it ports, the port gives the same bytes as the Python package. `PARITY.md` names the reference versions, lists the whole public surface with the status of each name, and records the gaps.
 
-The port holds the rule modules (constants, orthography, nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version, and the language test of textnorm) and the diacritizers: the rawi ensemble on onnxruntime, `tashkeel`, the lattice-guarded `diacritize` with `arbtok::vocalize`, `fusion`, and the stem, dialect and donor lexicons. Text normalization and the plugins are not ported.
+The port holds the rule modules (constants, orthography, nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version), the text normalization of textnorm and util, and the diacritizers: the rawi ensemble on onnxruntime, `tashkeel`, the lattice-guarded `diacritize` with `arbtok::vocalize`, `fusion`, and the stem, dialect and donor lexicons. textnorm and util speak and read numbers, dates and times in Arabic only. Where the Python package speaks such a form with the module of another language, the call raises `arbtok::NotPortedError`. Where the reference libraries reject a language, the call gives the Python result. The plugins are not ported.
 
 ## Build
 
@@ -44,7 +44,7 @@ A function raises the C++ class that stands for the Python exception: `arbtok::V
 
 ## Tests
 
-`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python, and holds no entry. An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
+`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. The `pyre` suite checks the regex engine of the port against Python `re` on the patterns of textnorm and util. The `exceptions` test checks that a call into the number layer raises the arbtok class of the Python exception. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python, and holds no entry. An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
 
 The goldens of the model hold the onnxruntime output of one CPU class, which their header names (see `PARITY.md`). On a CPU of another class, these tests fail with a message that names both classes. To test on such a CPU, dump the model goldens on it first:
 
@@ -63,3 +63,5 @@ HF_HUB_OFFLINE=1 python -I tools/dump_goldens.py --out-dir tests/goldens \
 ```
 
 The dumper runs the corpora a second time with an empty stem lexicon, and writes each record that depends on the stem lexicon as the SHA-256 of its line (see `PARITY.md`). The dumper stops when an installed reference package has another version than `PARITY.md` names. It prints the input count and the record count of each corpus. It counts the records again in each file it writes, and stops when the counts differ. `tools/inventory.py` writes the surface table of `PARITY.md` and fails when a name marked as ported is missing from its header.
+
+The textnorm and util dumpers also replay the calls that the sdist tests make, which `tests/data/textnorm_calls.jsonl.gz` holds. `tools/goldens/record_calls.py` records them again. It needs pytest in the same venv, and its docstring gives the command.
