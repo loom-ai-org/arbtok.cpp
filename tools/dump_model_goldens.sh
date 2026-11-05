@@ -7,9 +7,12 @@
 # CPU class. This script copies tests/goldens to <out dir> and dumps each of
 # those goldens again there, on this CPU, with the reference versions of
 # tools/goldens/common.py. Configure with -DARBTOK_GOLDENS_DIR=<out dir> to
-# test against them. --check also dumps every other golden and fails unless
-# its records are byte-identical to the committed file, and does the same for
-# a model golden whose class is the class of this CPU.
+# test against them. The re-dumped ensemble golden holds the raw logits of
+# every record, so ensemble_parity checks the tolerance on all of them. The
+# script fails when a re-dumped golden has other corpus counts than the
+# committed one. --check also dumps every other golden and fails unless its
+# records are byte-identical to the committed file, and does the same for a
+# model golden whose class is the class of this CPU.
 #
 # It needs uv, curl, the stem lexicon in the Hugging Face cache (see README),
 # and about 3 GB in <out dir>.work for the reference venv and the sources.
@@ -45,13 +48,17 @@ if [ ! -x "$work/ref/bin/python" ]; then
 fi
 py="$work/ref/bin/python"
 
-if [ ! -d "$work/src/sdist" ]; then
-    mkdir -p "$work/src/sdist" "$work/src/repo"
+# The sources go to a new directory, which is renamed to src only when both
+# downloads are complete, so an interrupted run leaves no partial src.
+if [ ! -d "$work/src" ]; then
+    partial=$(mktemp -d "$work/src.partial.XXXXXX")
+    mkdir -p "$partial/sdist" "$partial/repo"
     sdist=$(curl -sSf "https://pypi.org/pypi/arbtok/$arbtok_version/json" |
         python3 -c 'import json, sys; print(next(u["url"] for u in json.load(sys.stdin)["urls"] if u["packagetype"] == "sdist"))')
-    curl -sSfL "$sdist" | tar xz -C "$work/src/sdist" --strip-components=1
+    curl -sSfL "$sdist" | tar xz -C "$partial/sdist" --strip-components=1
     curl -sSfL "https://codeload.github.com/TigreGotico/arbtok/tar.gz/$gold_commit" |
-        tar xz -C "$work/src/repo" --strip-components=1 --wildcards '*/data/gold_code_switched' '*/data/span_gold' '*/tests'
+        tar xz -C "$partial/repo" --strip-components=1 --wildcards '*/data/gold_code_switched' '*/data/span_gold' '*/tests'
+    mv "$partial" "$work/src"
 fi
 
 here=$("$py" -I "$root/tools/goldens/cpu_class.py")
@@ -77,7 +84,10 @@ dump() {  # out dir, modules...
     local mods=()
     for m in "$@"; do
         case $m in
-            ensemble) "$py" -I "$root/tools/goldens/ensemble.py" --tests-dir "$work/src/repo/tests" --out "$dir/ensemble.jsonl.gz" ;;
+            # The golden with the raw logits of every record is the one the
+            # tests read. The one with digests is the form of the committed golden.
+            ensemble) "$py" -I "$root/tools/goldens/ensemble.py" --tests-dir "$work/src/repo/tests" \
+                          --out "$work/ensemble.digests.jsonl.gz" --full-logits-out "$dir/ensemble.jsonl.gz" ;;
             ensemble_unicode) "$py" -I "$root/tools/goldens/ensemble_unicode.py" "$dir/ensemble_unicode.jsonl.gz" ;;
             *) mods+=("$m") ;;
         esac
@@ -89,10 +99,24 @@ dump() {  # out dir, modules...
 }
 
 dump "$out" "${model[@]}"
-for m in "${model[@]}"; do
-    "$py" -I -c 'import gzip, json, sys; h = json.loads(gzip.open(sys.argv[1], "rt").readline()); assert h["cpu_class"] == sys.argv[2], h["cpu_class"]' \
-        "$out/$m.jsonl.gz" "$here"
-done
+# Each re-dump must name this CPU class and hold the corpus counts of the
+# committed golden: a missing input file gives a smaller corpus, not an error.
+"$py" -I - "$root/tests/goldens" "$out" "$here" "${model[@]}" <<'PY'
+import gzip, json, sys
+
+committed, dumped, here, names = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4:]
+bad = False
+for name in names:
+    want, got = (json.loads(gzip.open(f"{d}/{name}.jsonl.gz", "rt", encoding="utf-8").readline()) for d in (committed, dumped))
+    if got.get("cpu_class") != here:
+        print(f"{name}: the re-dump names class {got.get('cpu_class')}, this CPU is {here}", file=sys.stderr)
+        bad = True
+    for key in ("count", "corpora", "records"):
+        if got.get(key) != want.get(key):
+            print(f"{name}: the re-dump has {key} {got.get(key)}, the committed golden has {want.get(key)}", file=sys.stderr)
+            bad = True
+sys.exit(1 if bad else 0)
+PY
 echo "dumped ${#model[@]} model goldens for class $here into $out: ${model[*]}"
 
 # The records of two goldens, compared without the gzip header.
@@ -112,7 +136,9 @@ if [ "$check" = --check ]; then
     for m in "${model[@]}"; do
         golden_class=$("$py" -I -c 'import gzip, json, sys; print(json.loads(gzip.open(sys.argv[1], "rt").readline())["cpu_class"])' "$root/tests/goldens/$m.jsonl.gz")
         if [ "$golden_class" = "$here" ]; then
-            if same "$out/$m.jsonl.gz" "$root/tests/goldens/$m.jsonl.gz"; then echo "identical: $m (class $here)"; else echo "DIFFERS: $m (class $here)"; bad=1; fi
+            dumped="$out/$m.jsonl.gz"
+            [ "$m" = ensemble ] && dumped="$work/ensemble.digests.jsonl.gz"
+            if same "$dumped" "$root/tests/goldens/$m.jsonl.gz"; then echo "identical: $m (class $here)"; else echo "DIFFERS: $m (class $here)"; bad=1; fi
         else
             echo "not compared: $m holds class $golden_class"
         fi

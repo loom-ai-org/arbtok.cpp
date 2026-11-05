@@ -20,7 +20,7 @@ The first configure downloads the onnxruntime 1.31.1 release for Linux x64 and c
 
 The lexicon, diacritize and fusion tests read the default stem lexicon from the Hugging Face cache, and ctest runs them with `HF_HUB_OFFLINE=1`. Before the first test run, fetch the lexicon once as `.github/workflows/ci.yml` does, or run any program that loads it while the network is available.
 
-`cmake --install build` installs the library, the headers, the data files under `share/arbtok`, and the CMake package. A project then uses it with `find_package(arbtok)` and links `arbtok::arbtok`. `tests/package_consumer` is such a project.
+`cmake --install build` installs the library, the headers, the data files under `share/arbtok`, and the CMake package. A project then uses it with `find_package(arbtok)` and links `arbtok::arbtok`. `tests/package_consumer` is such a project. The program reads the data of the install that `find_package` found, also when `cmake --install --prefix` put that install in another prefix and the program is outside it.
 
 ## Use
 

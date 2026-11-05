@@ -44,8 +44,10 @@ else()
     set(_arbtok_default_data "${CMAKE_INSTALL_PREFIX}/${ARBTOK_DATA_INSTALL_DIR}")
 endif()
 # The library looks for its data relative to the installed library, or to the
-# executable it is linked into, before the absolute path, so an install made
-# with `cmake --install --prefix` into another prefix finds its data.
+# executable it is linked into, then in the data directory of the package that
+# find_package(arbtok) found, before the absolute path. So an install made with
+# `cmake --install --prefix` into another prefix finds its data, also from a
+# program outside that prefix.
 file(RELATIVE_PATH _arbtok_data_from_lib "${CMAKE_INSTALL_FULL_LIBDIR}" "${CMAKE_INSTALL_FULL_DATADIR}/arbtok")
 file(RELATIVE_PATH _arbtok_data_from_bin "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DATADIR}/arbtok")
 
@@ -115,7 +117,8 @@ install(EXPORT arbtokTargets
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
 configure_package_config_file(cmake/arbtokConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/arbtokConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok
+    PATH_VARS ARBTOK_DATA_INSTALL_DIR)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/arbtokConfigVersion.cmake
     COMPATIBILITY SameMinorVersion)
 install(FILES

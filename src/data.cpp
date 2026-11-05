@@ -24,6 +24,13 @@
 #define ARBTOK_DATA_FROM_BINDIR "../share/arbtok"
 #endif
 
+// The data directory of the installed package that a program was built
+// against. arbtokConfig.cmake compiles a definition into each program that
+// links arbtok::arbtok, because a static library runs from the program and the
+// program can be outside the install prefix. A program of this build tree has
+// no definition, so the weak declaration is null there.
+extern "C" const char* arbtok_installed_data_dir() __attribute__((weak));
+
 namespace arbtok {
 
 namespace {
@@ -64,6 +71,16 @@ std::string relocated_data_dir() {
     if (ec || !fs::is_regular_file(candidate / "unicode_symbol2label.json", ec)) return {};
     return candidate.string();
 }
+
+// The data directory of the package that the program was built against.
+// Empty when the program has none or that directory does not hold the data.
+std::string package_data_dir() {
+    if (arbtok_installed_data_dir == nullptr) return {};
+    const std::string dir = arbtok_installed_data_dir();
+    std::error_code ec;
+    if (!std::filesystem::is_regular_file(std::filesystem::path(dir) / "unicode_symbol2label.json", ec)) return {};
+    return dir;
+}
 }  // namespace
 
 void set_data_dir(std::string path) {
@@ -77,8 +94,11 @@ std::string data_dir() {
         if (data_dir_override()) return *data_dir_override();
     }
     if (const char* env = std::getenv("ARBTOK_DATA_DIR"); env != nullptr && *env != '\0') return env;
-    static const std::string relocated = relocated_data_dir();
-    return relocated.empty() ? ARBTOK_DEFAULT_DATA_DIR : relocated;
+    static const std::string found = [] {
+        const std::string relocated = relocated_data_dir();
+        return relocated.empty() ? package_data_dir() : relocated;
+    }();
+    return found.empty() ? ARBTOK_DEFAULT_DATA_DIR : found;
 }
 
 }  // namespace arbtok

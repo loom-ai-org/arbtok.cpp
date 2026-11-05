@@ -440,7 +440,7 @@ The goldens do not hold the default stem lexicon, which is GPL-2.0-derived data,
 
 The other 16 golden files hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
 
-`tests/goldens/ensemble.jsonl.gz` (32432 records) and `tests/goldens/ensemble_unicode.jsonl.gz` (44152 records) hold the goldens of the ensemble. `ensemble_parity` compares them, and the logits of 32306 records are bit-identical to those of onnxruntime in Python on the same machine.
+`tests/goldens/ensemble.jsonl.gz` (32432 records) and `tests/goldens/ensemble_unicode.jsonl.gz` (44152 records) hold the goldens of the ensemble. `ensemble_parity` compares them, and the logits of 32306 records are bit-identical to those of onnxruntime in Python on the same machine. A record that holds the raw logits must agree within 1e-6, and a NaN difference fails it. The committed golden holds the raw logits of 2403 records and the SHA-256 of the logits of each other record. A record with only the SHA-256 must agree bit for bit.
 
 The `o2i_calls` corpus records each call that `dialects` makes into orthography2ipa (`resolve`, `resolves_exactly`) and into langcodes (`closest_match`), with the arguments that arbtok passes. The C++ resolution layer is checked on the inputs it receives.
 
@@ -510,7 +510,7 @@ The fusion logprobs records are model output too: their input rows are the logit
 
 `arbtok_parity` and `ensemble_parity` compare the class in the header with the class of the CPU that runs the test. When they differ, the test fails before it compares a record. Its message names both classes and the command that dumps the model goldens.
 
-`tools/dump_model_goldens.sh <dir>` builds the reference venv with uv, fetches the sdist and the arbtok repository at the gold commit, and copies `tests/goldens` to `<dir>`. Then it dumps each golden whose header names a class again on this CPU. Configure with `-DARBTOK_GOLDENS_DIR=<dir>` to run the tests on that directory. With `--check`, the script also dumps the other goldens and fails unless the records of each one are byte-identical to the committed file. It does the same for a model golden whose class is the class of this CPU. Every CI test job prints the runner CPU and dumps the model goldens before ctest. The gcc baseline job adds `--check`.
+`tools/dump_model_goldens.sh <dir>` builds the reference venv with uv, fetches the sdist and the arbtok repository at the gold commit, and copies `tests/goldens` to `<dir>`. The sources go to a temporary directory, which the script renames only when both downloads are complete. Then it dumps each golden whose header names a class again on this CPU. The ensemble golden that it dumps holds the raw logits of every record, so the tolerance applies to all of them. The script fails when a re-dumped golden has other corpus counts or another record count than the committed one. Configure with `-DARBTOK_GOLDENS_DIR=<dir>` to run the tests on that directory. With `--check`, the script also dumps the other goldens and fails unless the records of each one are byte-identical to the committed file. It does the same for a model golden whose class is the class of this CPU. Every CI test job prints the runner CPU and dumps the model goldens before ctest. The gcc baseline job adds `--check`.
 
 ## Python semantics that the port keeps
 

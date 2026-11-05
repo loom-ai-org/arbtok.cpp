@@ -6,6 +6,11 @@
 // or the Unicode goldens of tools/goldens/ensemble_unicode.py; its header
 // record names which. Exit status 0 means every record matched and the
 // record count equals the count in the header.
+//
+// A record that holds its raw logits must agree with the C++ logits within
+// the tolerance. A record that holds only their SHA-256 must agree bit for
+// bit. tools/goldens/ensemble.py --full-logits-out writes the raw logits of
+// every record.
 
 #include <zlib.h>
 
@@ -301,9 +306,15 @@ int main(int argc, char** argv) {
                 rep.fail(n, "logits shape", std::to_string(want_rows), std::to_string(lg.rows));
             } else {
                 ++hashed;
-                if (Sha256::hex(lg.values.data(), lg.values.size() * sizeof(float)) == S(r.at("logits_sha256")))
-                    ++identical;
-                if (const auto* b64 = r.find("logits"); b64 && !is_null(*b64)) {
+                const std::string digest = Sha256::hex(lg.values.data(), lg.values.size() * sizeof(float));
+                const bool same_bits = digest == S(r.at("logits_sha256"));
+                if (same_bits) ++identical;
+                const auto* b64 = r.find("logits");
+                // A record without the raw logits can only be checked by its
+                // digest, so its logits must be bit-identical.
+                if (!b64 || is_null(*b64)) {
+                    if (!same_bits) rep.fail(n, "logits_sha256", S(r.at("logits_sha256")), digest);
+                } else {
                     const std::vector<unsigned char> raw = base64_decode(S(*b64));
                     if (raw.size() != lg.values.size() * sizeof(float)) {
                         rep.fail(n, "logits size", std::to_string(raw.size()), std::to_string(lg.values.size() * 4));
@@ -315,9 +326,14 @@ int main(int argc, char** argv) {
                             float want;
                             std::memcpy(&want, raw.data() + 4 * k, 4);
                             const double d = std::fabs(static_cast<double>(want) - static_cast<double>(lg.values[k]));
-                            if (!(d <= rec_max)) rec_max = d;
+                            // A NaN difference fails the record: no later finite difference may replace it.
+                            if (std::isnan(d)) {
+                                rec_max = d;
+                                break;
+                            }
+                            rec_max = std::max(rec_max, d);
                         }
-                        max_diff = std::max(max_diff, rec_max);
+                        if (!std::isnan(max_diff) && !(rec_max <= max_diff)) max_diff = rec_max;
                         if (!(rec_max <= tolerance)) rep.fail(n, "logits", "max abs diff <= tolerance", std::to_string(rec_max));
                     }
                 }

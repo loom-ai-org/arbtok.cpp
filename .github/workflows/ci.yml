@@ -54,6 +54,13 @@ jobs:
         run: ctest --test-dir build --output-on-failure -j 4
       - name: Install and build a consumer
         run: |
+          # First an install into another prefix than the configured one, used
+          # by a program outside that prefix with no data variable set: the
+          # configured prefix holds no data yet.
+          cmake --install build --prefix "$RUNNER_TEMP/moved"
+          cmake -S tests/package_consumer -B moved-consumer -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/moved"
+          cmake --build moved-consumer
+          ./moved-consumer/consumer
           cmake --install build
           cmake -S tests/package_consumer -B consumer -DCMAKE_PREFIX_PATH="$PWD/prefix"
           cmake --build consumer
