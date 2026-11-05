@@ -420,7 +420,7 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | lexicon | constants 3, parse 916, parse_shares 916, source 1, get 31654, ambiguous 6666, contains 1333, len 1, env 56 | 41546 |
 | nisba | constants 1, restore_nisba 9581 | 9582 |
 | orthography | constants 5, allowed_classes 354, pinned_class 177, project_class 17374, source_marks 21567 | 39477 |
-| pyre | patterns 247, finditer 235638, fullmatch 43984, match 52344, search 19629, engine 4964 | 356806 |
+| pyre | patterns 297, finditer 283338, fullmatch 43984, match 52344, search 19629, engine 23450 | 423042 |
 | sandhi | constants 1, apply_cross_word 30725, pausal 3465, has_article 394, is_bare_wasl_alif 394 | 34979 |
 | stress | first_segment_len 6077, stress_ipa 190275, stress_words 6078 | 202430 |
 | tashkeel | messages 54, TashkeelDiacritizer 2960 | 3014 |
@@ -451,7 +451,7 @@ The other 18 golden files that `tools/dump_goldens.py` writes hold no hashed rec
 
 The `o2i_calls` corpus records each call that `dialects` makes into orthography2ipa (`resolve`, `resolves_exactly`) and into langcodes (`closest_match`), with the arguments that arbtok passes. The C++ resolution layer is checked on the inputs it receives.
 
-The `pyre` records check the regex engine of the port against Python `re`. They hold each compiled pattern of `textnorm` and `util`, the patterns the two modules compile at call time, and the pattern strings they pass to `re` functions, with the result of `finditer`, `fullmatch`, `match` at a position and `search` up to an end position. Offsets are in code points. The `engine` corpus adds patterns that no module holds, for the constructs where a backtracking matcher can part from sre: `\b` and `\B` at the ends of a string and in an empty string, repeats of an item that can match empty, and the case pairs that sre adds to IGNORECASE beyond simple case folding.
+The `pyre` records check the regex engine of the port against Python `re`. They hold each compiled pattern of `textnorm` and `util`, the patterns the two modules compile at call time, and the pattern strings they pass to `re` functions, with the result of `finditer`, `fullmatch`, `match` at a position and `search` up to an end position. Offsets are in code points. The `engine` corpus adds patterns that no module holds, for the constructs where a backtracking matcher can part from sre: `\b` and `\B` at the ends of a string and in an empty string, repeats of an item that can match empty, a conditional inside the group it names, and the case pairs that sre adds to IGNORECASE beyond simple case folding.
 
 Each golden suite has a mutation control: one rule is broken in the C++, and the suite must fail. The table gives the mismatches that each mutation causes. The ensemble suites have their own mutation controls, which kill 12 of 14 mutants.
 
@@ -470,13 +470,16 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | textnorm | ماية after و is the hundred after a value from 100, not from 1000 | 30 of 398131 |
 | textnorm | a spoken date refuses the last day of a month | 330 of 398131 |
 | util | match_lang refuses a language at distance 10 | 4 of 50596 |
-| pyre | `\D` matches the decimal digits | 953 of 356806 |
+| pyre | `\D` matches the decimal digits | 953 of 423042 |
 | textnorm | a spoken date drops the 400-year rule of the leap year | 118 of 398131 |
 | textnorm, util | util takes every fourth year as a leap year | 172 of 398131, 8 of 50596 |
 | textnorm, numbers_dates_ar | no text names a holiday | 312 of 398131, 4 of 55038 |
-| pyre | the case pairs that sre adds to IGNORECASE are off | 190 of 356806 |
-| pyre | `\B` matches in an empty string | 63 of 356806 |
-| pyre | a repeat item past its minimum takes the position where the previous item started | 57 of 356806 |
+| pyre | the case pairs that sre adds to IGNORECASE are off | 190 of 423042 |
+| pyre | `\B` matches in an empty string | 78 of 423042 |
+| pyre | a repeat item past its minimum takes the position where the previous item started | 452 of 423042 |
+| pyre | a group sets its start mark only when it closes | 412 of 423042 |
+| pyre | a conditional takes the yes branch when both marks of the group are set | 412 of 423042 |
+| pyre | a conditional takes the yes branch only when the end mark is after the start mark | 1721 of 423042 |
 | util, exceptions | util's `except Exception` lets a `NotImplementedError` of the reference libraries through | 1749 of 50596, 7 of 16 calls |
 | textnorm, exceptions | `leave_unspeakable_numbers` lets a `NotImplementedError` of the reference libraries through | 1334 of 398131, 2 of 16 calls |
 | numbers_dispatch, exceptions | a language that a module of another language serves raises `NotImplementedError`, not `NotPortedError` | 3733 of 20834, 2 of 16 calls |

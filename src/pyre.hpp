@@ -7,18 +7,22 @@
 // empty match next to the previous match is allowed in finditer, sub and split.
 // As in sre, \b and \B fail when the string up to endpos is empty, and a
 // repeat does not try an item past its minimum at the position where the
-// previous item past its minimum started. The goldens of tests/goldens/pyre
-// hold every module pattern and the engine patterns of tools/goldens/pyre.py.
+// previous item past its minimum started. As in sre, a group sets its start
+// mark when the match enters it, and (?(group)yes|no) takes the yes branch only
+// when the end mark of the group is not before its start mark. The goldens of
+// tests/goldens/pyre hold every module pattern and the engine patterns of
+// tools/goldens/pyre.py.
 //
 // Supported syntax: literals and escapes, classes, . ^ $ \A \Z \b \B, groups
 // (capturing, (?:...), (?P<name>...), (?P=name), \N), look-ahead and
 // look-behind, (?(group)yes|no), (?i:...), a leading (?i) or (?s), and the
 // quantifiers * + ? {m,n} with their lazy forms. Any other syntax raises
 // pyre::error, as an unsupported pattern must not match silently. The
-// compiler does not check all that sre checks: a pattern with a reference to a
-// group that is still open, or to a group defined later, compiles here, and
-// sre raises re.error for it. The patterns that the port compiles at call time
-// escape their data, so no such pattern reaches the compiler.
+// compiler does not check all that sre checks: a pattern with a back-reference
+// to a group that is still open, or with a reference to a group defined later,
+// compiles here, and sre raises re.error for it. The patterns that the port
+// compiles at call time escape their data, so no such pattern reaches the
+// compiler.
 #pragma once
 
 #include <cstddef>

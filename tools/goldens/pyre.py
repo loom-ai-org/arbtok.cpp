@@ -28,11 +28,13 @@ position of the short texts of a sample.
 
 The ENGINE patterns are in no module. They hold the constructs where a
 backtracking matcher can part from sre: a word boundary and its negation at the
-ends of a string and in an empty string, and repeats of an item that can match
-empty, and the case pairs that sre adds to IGNORECASE beyond simple case folding
-(re._casefix._EXTRA_CASES, such as s and ſ, or µ and μ). Each of them reads every
-call kind over the ENGINE_TEXTS, and match and search read every position.
+ends of a string and in an empty string, repeats of an item that can match
+empty, a conditional inside the group it names, and the case pairs that sre adds
+to IGNORECASE beyond simple case folding (re._casefix._EXTRA_CASES, such as s and
+ſ, or µ and μ). Each of them reads every call kind over the ENGINE_TEXTS, and
+match and search read every position.
 """
+import itertools
 import random
 import re
 import re._casefix
@@ -78,8 +80,20 @@ ENGINE = {
     "engine:end_or_a": r"(?:a|$){2,}", "engine:group_in_empty_repeat": r"(?:(b)|(a?))+?$",
     "engine:extra_case_class": "(?i)[" + re.escape(EXTRA_CASED) + "]",
     "engine:extra_case_alternation": "(?i)" + "|".join(re.escape(c) for c in EXTRA_CASED),
+    "engine:cond_in_own_group_x": r"(?:x((?(1)y|)))+", "engine:cond_in_own_group_ac": r"(a((?(2)b|c)))+",
 }
+#: A conditional inside the group it names, in a repeat. sre sets the start mark of a group when the
+#: match enters it, so the condition reads the end mark of the previous pass against the new start.
+CONDITIONAL_FORMS = {"inner": "(?:{lead}((?(1){yes}|{no}))){q}", "outer": "({lead}(?(1){yes}|{no})){q}",
+                     "nested": "({lead}((?(2){yes}|{no}))){q}"}
+ENGINE.update({
+    f"engine:cond_{form}:{lead}:{yes}|{no}:{q}": source.format(lead=lead, yes=yes, no=no, q=q)
+    for form, source in CONDITIONAL_FORMS.items()
+    for lead, yes, no, q in itertools.product(("a", "a?"), ("b", "", "a"), ("", "b"), ("+", "+?"))
+    if yes != no
+})
 ENGINE_TEXTS = ["", "a", "aa", "aaa", "b", "ab", "ba", "aab", "bab", "abba", "ΣΙI", " ", "a b", "_a", "a\n",
+                "xx", "acab", "abab", "aabb", "abaab",
                 EXTRA_CASED, EXTRA_PARTNERS]
 #: The patterns the modules fullmatch.
 FULLMATCH = ["textnorm._CLOCK_WORD", "textnorm._ARABIC_WORD", "textnorm._DEFINITE", "textnorm._YEAR_WORD",
