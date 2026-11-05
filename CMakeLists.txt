@@ -32,6 +32,7 @@ set(BUILD_TESTING "${_arbtok_build_testing}")
 if(NOT TARGET orthography2ipa::orthography2ipa)
     add_library(orthography2ipa::orthography2ipa ALIAS orthography2ipa)
 endif()
+include(cmake/onnxruntime.cmake)
 
 # The test registry is enabled before src/numbers, so that its parity tests
 # are registered with the others. A stride above 1 checks only every n-th
@@ -55,8 +56,10 @@ else()
     set(_arbtok_default_data "${CMAKE_INSTALL_PREFIX}/${ARBTOK_DATA_INSTALL_DIR}")
 endif()
 # The library looks for its data relative to the installed library, or to the
-# executable it is linked into, before the absolute path, so an install made
-# with `cmake --install --prefix` into another prefix finds its data.
+# executable it is linked into, then in the data directory of the package that
+# find_package(arbtok) found, before the absolute path. So an install made with
+# `cmake --install --prefix` into another prefix finds its data, also from a
+# program outside that prefix.
 file(RELATIVE_PATH _arbtok_data_from_lib "${CMAKE_INSTALL_FULL_LIBDIR}" "${CMAKE_INSTALL_FULL_DATADIR}/arbtok")
 file(RELATIVE_PATH _arbtok_data_from_bin "${CMAKE_INSTALL_FULL_BINDIR}" "${CMAKE_INSTALL_FULL_DATADIR}/arbtok")
 
@@ -83,6 +86,15 @@ add_library(arbtok
     src/gemination.cpp
     src/lattice.cpp
     src/tokenizer.cpp
+    src/ensemble.cpp
+    src/diacritize.cpp
+    src/tashkeel.cpp
+    src/pyio.cpp
+    src/fetch.cpp
+    src/lexicon.cpp
+    src/dialect_lexicon.cpp
+    src/donor_lexicon.cpp
+    src/fusion.cpp
 )
 add_library(arbtok::arbtok ALIAS arbtok)
 target_include_directories(arbtok
@@ -96,7 +108,7 @@ target_include_directories(arbtok
 target_include_directories(arbtok PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/orthography2ipa.cpp/src)
 # dialects.hpp and lattice.hpp hand out orthography2ipa types, so
 # orthography2ipa is part of the public interface.
-target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa arbtok::numbers PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa arbtok::numbers PRIVATE arbtok::onnxruntime ${CMAKE_DL_LIBS})
 target_compile_definitions(arbtok PRIVATE ARBTOK_DEFAULT_DATA_DIR="${_arbtok_default_data}"
     ARBTOK_DATA_FROM_LIBDIR="${_arbtok_data_from_lib}" ARBTOK_DATA_FROM_BINDIR="${_arbtok_data_from_bin}")
 set_target_properties(arbtok PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -114,13 +126,16 @@ install(TARGETS arbtok arbtok_numbers EXPORT arbtokTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# data/ holds the bundled model under models/.
 install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR} PATTERN numbers EXCLUDE)
+arbtok_install_onnxruntime()
 install(EXPORT arbtokTargets
     NAMESPACE arbtok::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
 configure_package_config_file(cmake/arbtokConfig.cmake.in
     ${CMAKE_CURRENT_BINARY_DIR}/arbtokConfig.cmake
-    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok
+    PATH_VARS ARBTOK_DATA_INSTALL_DIR)
 write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/arbtokConfigVersion.cmake
     COMPATIBILITY SameMinorVersion)
 install(FILES
@@ -151,6 +166,11 @@ if(ARBTOK_BUILD_TESTS)
         tests/parity/lattice.cpp
         tests/parity/tokenizer.cpp
         tests/parity/version.cpp
+        tests/parity/lexicon.cpp
+        tests/parity/dialect_lexicon.cpp
+        tests/parity/donor_lexicon.cpp
+        tests/parity/diacritize.cpp
+        tests/parity/fusion.cpp
     )
     target_include_directories(arbtok_parity PRIVATE tests)
     # The headers under src/ expose the private functions the goldens call.
@@ -165,38 +185,66 @@ if(ARBTOK_BUILD_TESTS)
     string(REGEX MATCHALL "X\\([a-z0-9_]+\\)" _parity_modules "${_parity_header}")
     list(TRANSFORM _parity_modules REPLACE "X\\(([a-z0-9_]+)\\)" "\\1")
     # The dialects records resolve tags that orthography2ipa matches against
-    # its whole registry, so eight shard tests share them.
-    # With a stride above 1, the dialects records run as one test at eight
-    # times the stride.
+    # its whole registry, and the diacritize records run the model, so each of
+    # these modules runs as eight shard tests.
+    # A stride above 1 checks only every n-th record, for the slow sanitizer
+    # builds; a sharded module then runs as one test at eight times the stride.
+    # The fusion records run in full and in one test whatever the stride: a
+    # text with no word leaves last_nbest as the record before it set it.
+    # The goldens of the model hold the output of one CPU class. On a CPU of
+    # another class, tools/dump_model_goldens.sh writes a directory that holds
+    # them dumped on this CPU, and this variable names it.
+    set(ARBTOK_GOLDENS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens CACHE PATH "The directory of the golden files")
     set(_divergences --divergences ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/expected_divergences.tsv)
+    set(_sharded dialects diacritize)
     set(_parity_tests)
     foreach(_module IN LISTS _parity_modules)
-        if(_module STREQUAL "dialects")
-            continue()
+        if(_module STREQUAL "fusion")
+            add_test(NAME parity_fusion COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
+                     ${_divergences} fusion)
+            list(APPEND _parity_tests parity_fusion)
+        elseif(NOT _module IN_LIST _sharded)
+            add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
+                     ${_divergences} --stride ${ARBTOK_PARITY_STRIDE} ${_module})
+            list(APPEND _parity_tests parity_${_module})
+        elseif(ARBTOK_PARITY_STRIDE GREATER 1)
+            math(EXPR _shard_stride "${ARBTOK_PARITY_STRIDE} * 8")
+            add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
+                     ${_divergences} --stride ${_shard_stride} ${_module})
+            list(APPEND _parity_tests parity_${_module})
+        else()
+            foreach(_k RANGE 7)
+                add_test(NAME parity_${_module}_${_k} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
+                         ${_divergences} --shard ${_k}/8 ${_module})
+                list(APPEND _parity_tests parity_${_module}_${_k})
+            endforeach()
         endif()
-        add_test(NAME parity_${_module} COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
-                 ${_divergences} --stride ${ARBTOK_PARITY_STRIDE} ${_module})
-        list(APPEND _parity_tests parity_${_module})
     endforeach()
-    if(ARBTOK_PARITY_STRIDE GREATER 1)
-        math(EXPR _dialects_stride "${ARBTOK_PARITY_STRIDE} * 8")
-        add_test(NAME parity_dialects COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
-                 ${_divergences} --stride ${_dialects_stride} dialects)
-        list(APPEND _parity_tests parity_dialects)
-    else()
-        foreach(_k RANGE 7)
-            add_test(NAME parity_dialects_${_k} COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens
-                     ${_divergences} --shard ${_k}/8 dialects)
-            list(APPEND _parity_tests parity_dialects_${_k})
-        endforeach()
-    endif()
+    set_tests_properties(parity_fusion PROPERTIES TIMEOUT 3600)
+
+    foreach(_t ensemble_parity ensemble_api)
+        add_executable(${_t} tests/${_t}.cpp)
+        target_include_directories(${_t} PRIVATE src)
+        target_link_libraries(${_t} PRIVATE arbtok ZLIB::ZLIB)
+    endforeach()
+    add_test(NAME ensemble_api COMMAND ensemble_api)
+    add_test(NAME ensemble_unicode_parity
+        COMMAND ensemble_parity ${ARBTOK_GOLDENS_DIR}/ensemble_unicode.jsonl.gz)
+    add_test(NAME ensemble_parity
+        COMMAND ensemble_parity ${ARBTOK_GOLDENS_DIR}/ensemble.jsonl.gz)
+    set_tests_properties(ensemble_parity PROPERTIES TIMEOUT 1800)
+    list(APPEND _parity_tests ensemble_api ensemble_unicode_parity ensemble_parity)
 
     add_executable(arbtok_exceptions tests/exceptions.cpp)
     target_link_libraries(arbtok_exceptions PRIVATE arbtok)
     add_test(NAME exceptions COMMAND arbtok_exceptions)
     list(APPEND _parity_tests exceptions)
 
+    # The lexicon, diacritize and fusion records read the default stem
+    # lexicon from the Hugging Face cache. Offline, a missing file fails the
+    # test instead of reaching the network.
     foreach(_test IN LISTS _parity_tests)
-        set_tests_properties(${_test} PROPERTIES ENVIRONMENT "ARBTOK_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data")
+        set_tests_properties(${_test} PROPERTIES ENVIRONMENT
+            "ARBTOK_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data;HF_HUB_OFFLINE=1")
     endforeach()
 endif()

@@ -3,5 +3,23 @@
 include(CMakeFindDependencyMacro)
 find_dependency(orthography2ipa)
 
+if(NOT TARGET arbtok::onnxruntime)
+    add_library(arbtok::onnxruntime SHARED IMPORTED)
+    set_target_properties(arbtok::onnxruntime PROPERTIES IMPORTED_LOCATION "@ARBTOK_ONNXRUNTIME_CONFIG_LOCATION@")
+endif()
+
 include("${CMAKE_CURRENT_LIST_DIR}/arbtokTargets.cmake")
+
+# A static libarbtok runs from the program that links it, and that program can
+# be outside this prefix. This source, compiled into the program, names the
+# data directory of this install (arbtok::data_dir() in src/data.cpp). It is
+# written only when its text changes, so a configure does not force a rebuild.
+set_and_check(_arbtok_data_dir "@PACKAGE_ARBTOK_DATA_INSTALL_DIR@")
+string(REPLACE "\\" "\\\\" _arbtok_data_literal "${_arbtok_data_dir}")
+string(REPLACE "\"" "\\\"" _arbtok_data_literal "${_arbtok_data_literal}")
+set(_arbtok_data_source "${CMAKE_BINARY_DIR}/arbtok/installed_data_dir.cpp")
+file(WRITE "${_arbtok_data_source}.new"
+    "extern \"C\" __attribute__((weak)) const char* arbtok_installed_data_dir() { return \"${_arbtok_data_literal}\"; }\n")
+configure_file("${_arbtok_data_source}.new" "${_arbtok_data_source}" COPYONLY)
+set_property(TARGET arbtok::arbtok APPEND PROPERTY INTERFACE_SOURCES "${_arbtok_data_source}")
 check_required_components(arbtok)

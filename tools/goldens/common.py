@@ -3,18 +3,25 @@
 A golden file is tests/goldens/<module>.jsonl.gz. Its first line is a header
 with the reference versions, the input sources, the record count and the count
 per corpus. Each other line is one record: [function, arguments..., result],
-written as compact JSON. An exception is recorded as {"err": "<class name>"},
+written as compact JSON. A record whose line changes when the stem lexicon has
+no entries holds {"sha256": <hex>} in place of each result item, where <hex>
+is the SHA-256 of the UTF-8 line. The header then gives the count of those
+records as "sha256_records". A golden whose dump ran the model names the CPU
+class of the dump as "cpu_class" (cpu_class.py), because onnxruntime runs other
+kernels, with other results, on another class. An exception is recorded as {"err": "<class name>"},
 because the exception class is part of the contract. A Python set is written
 sorted, because its iteration order follows the hash seed.
 
-The inputs come from three places that the command line names: the tests/
+The inputs come from four places that the command line names: the tests/
 directory of the arbtok sdist, the gold sets of the arbtok repository at the
-commit of the reference release, and the reference installation itself (its
-bundled lexicons and the orthography2ipa specs).
+commit of the reference release, tests/ar_test.txt of that repository, and the
+reference installation itself (its bundled lexicons and the orthography2ipa
+specs).
 """
 import ast
 import csv
 import gzip
+import hashlib
 import importlib.metadata
 import io
 import json
@@ -30,10 +37,13 @@ import unicodedata
 PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
           "ovos-spec-tools": "1.17.1a1", "ovos-number-parser": "0.24.3a1", "ovos-date-parser": "0.35.7a1",
           "unicode-rbnf": "2.4.1", "chronologia": "0.31.7a2", "dateparser": "1.5.0"}
+#: The packages that compute the model output and the log-probabilities: onnxruntime is the version of the C++
+#: tarball, and fusion.logprobs replicates the numpy loops of this numpy.
+RUNTIME = {"onnxruntime": "1.31.1", "numpy": "2.5.4"}
 #: The arbtok commit whose version.py is 0.0.2a71; the gold sets are read there.
 GOLD_COMMIT = "a95668cf097c5fcfb72b7ab75d7346579626e7a5"
 
-SOURCES = {"sdist_tests": None, "gold_dir": None}
+SOURCES = {"sdist_tests": None, "gold_dir": None, "corpus": None}
 
 # Strings that exercise the code-point layer: case mappings that change the
 # length, non-ASCII digits and spaces, combining marks, astral characters, and
@@ -59,10 +69,12 @@ def call(fn, *args, **kwargs):
 
 def versions():
     """The version of each pinned package, of Python and of its Unicode database, for a golden header."""
-    out = {name: importlib.metadata.version(name) for name in PINNED}
-    wrong = {name: v for name, v in out.items() if v != PINNED[name]}
+    pins = PINNED | RUNTIME
+    wrong = {name: importlib.metadata.version(name) for name, version in pins.items()
+             if importlib.metadata.version(name) != version}
     if wrong:
-        raise SystemExit(f"the reference environment has {wrong}, the port is held to {PINNED}")
+        raise SystemExit(f"the reference environment has {wrong}, the port is held to {pins}")
+    out = {name: importlib.metadata.version(name) for name in PINNED}
     out["python"] = sys.version.split()[0]
     out["unicode"] = unicodedata.unidata_version
     return out
@@ -160,6 +172,17 @@ def spec_exception_words():
     return unique(out)
 
 
+def corpus_words(step):
+    """The Arabic word of every step-th line of tests/ar_test.txt (word<TAB>IPA), from the first line."""
+    lines = pathlib.Path(SOURCES["corpus"]).read_text(encoding="utf-8").splitlines()
+    return [line.split("\t")[0] for line in lines[::step]]
+
+
+def arabic_test_strings():
+    """The sdist test strings that hold a character of the Arabic block."""
+    return [s for s in test_strings() if any("\u0600" <= c <= "\u06ff" for c in s)]
+
+
 def words_of(texts):
     out = []
     for text in texts:
@@ -167,24 +190,62 @@ def words_of(texts):
     return unique(out)
 
 
-def write(path, module, corpora):
-    """corpora: [(corpus name, input count, records)].
+#: The number of result items at the end of a record, where it is not one.
+RESULT_ITEMS = {("diacritize", "word"): 2}
 
-    The header holds the input count of each corpus. After the file is written,
-    its records are counted again from the file, and the file must hold one
-    record for each input. The C++ test also compares the header count with the
+
+def hashed(module, record, line):
+    """The record with each result item replaced by the SHA-256 of its line."""
+    n = RESULT_ITEMS.get((module, record[0]), 1)
+    digest = {"sha256": hashlib.sha256(line.encode("utf-8")).hexdigest()}
+    return dumps(record[:-n] + [digest] * n)
+
+
+def write_lines(path, corpora):
+    """The records of corpora as lines, with no header and no hashing: the output of the stem-free dump."""
+    with open(path, "w", encoding="utf-8") as fh:
+        for _, _, records in corpora:
+            for r in records:
+                fh.write(dumps(r) + "\n")
+
+
+def write(path, module, corpora, stem_free, cpu=None):
+    """corpora: [(corpus name, input count, records)]. stem_free: the lines of the
+    same records, dumped with a stem lexicon that has no entries. cpu: the CPU
+    class, when the dump of the corpora ran the model.
+
+    The header holds the input count of each corpus. A record whose line differs
+    from its stem-free line is written hashed. After the file is written, its
+    records are counted again from the file, and the file must hold one record
+    for each input. The C++ test also compares the header count with the
     records it reads.
     """
     lines = []
     counts = {}
+    n_hashed = 0
     for name, n_in, records in corpora:
         counts[name] = n_in
-        lines.extend(dumps(r) for r in records)
-        print(f"  {module}/{name}: {n_in} in, {len(records)} out", file=sys.stderr)
+        corpus_hashed = 0
+        for r in records:
+            line = dumps(r)
+            if len(lines) >= len(stem_free):
+                raise SystemExit(f"{module}: the stem-free dump has only {len(stem_free)} records")
+            if line != stem_free[len(lines)]:
+                line = hashed(module, r, line)
+                corpus_hashed += 1
+            lines.append(line)
+        n_hashed += corpus_hashed
+        print(f"  {module}/{name}: {n_in} in, {len(records)} out, {corpus_hashed} hashed", file=sys.stderr)
         if n_in != len(records):
             raise SystemExit(f"{module}/{name}: {n_in} inputs gave {len(records)} records")
+    if len(lines) != len(stem_free):
+        raise SystemExit(f"{module}: {len(lines)} records, the stem-free dump has {len(stem_free)}")
     header = {"module": module, "versions": versions(), "gold_commit": GOLD_COMMIT, "corpora": counts,
               "count": sum(counts.values())}
+    if n_hashed:
+        header["sha256_records"] = n_hashed
+    if cpu:
+        header["cpu_class"] = cpu
     raw = io.BytesIO()
     with gzip.GzipFile(fileobj=raw, mode="wb", mtime=0, filename="") as gz:
         gz.write((dumps(header) + "\n").encode("utf-8"))

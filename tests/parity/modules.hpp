@@ -24,7 +24,12 @@
     X(sandhi)                    \
     X(lattice)                   \
     X(tokenizer)                 \
-    X(version)
+    X(version)                   \
+    X(lexicon)                   \
+    X(dialect_lexicon)           \
+    X(donor_lexicon)             \
+    X(diacritize)                \
+    X(fusion)
 
 namespace parity {
 #define ARBTOK_PARITY_DECLARE(name) std::string record_##name(const json_line::Value& line);

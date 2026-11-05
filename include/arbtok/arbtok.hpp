@@ -1,13 +1,19 @@
 // arbtok (the package): the names that the Python package re-exports at its
-// top level and that this port holds. AsrNorm, TtsNorm, normalize_asr,
-// normalize_for_tts and vocalize are not ported.
+// top level and that this port holds. AsrNorm, TtsNorm, normalize_asr and
+// normalize_for_tts are not ported.
 #pragma once
 
 #include "arbtok/arabizi.hpp"
 #include "arbtok/constants.hpp"
+#include "arbtok/diacritize.hpp"
+#include "arbtok/dialect_lexicon.hpp"
 #include "arbtok/dialects.hpp"
+#include "arbtok/donor_lexicon.hpp"
+#include "arbtok/ensemble.hpp"
 #include "arbtok/errors.hpp"
+#include "arbtok/fusion.hpp"
 #include "arbtok/lattice.hpp"
+#include "arbtok/lexicon.hpp"
 #include "arbtok/nisba.hpp"
 #include "arbtok/orthography.hpp"
 #include "arbtok/sandhi.hpp"
@@ -26,5 +32,15 @@ using dialects::Lect;
 using dialects::spec_for_lang;
 using dialects::supported_lects;
 using textnorm::is_arabic_lang;
+
+// vocalize(text, lect): text diacritized as lect speaks it, with a record per
+// word (diacritize::diacritize).
+inline diacritize::DiacritizedText vocalize(const std::string& text, const std::string& lect = "ar") {
+    return diacritize::diacritize(text, lect);
+}
+inline diacritize::DiacritizedText vocalize(const std::string& text, const std::string& lect,
+                                            const diacritize::Options& options) {
+    return diacritize::diacritize(text, lect, options);
+}
 
 }  // namespace arbtok

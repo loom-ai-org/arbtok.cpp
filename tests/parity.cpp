@@ -9,6 +9,15 @@
 // is not in the goldens, fails the run, so that the list shrinks when the fix
 // lands.
 //
+// A golden whose dump ran the model names the CPU class of the dump in its
+// header (tests/cpu_class.hpp). On a CPU of another class the run stops with
+// that reason before it reads a record.
+//
+// A record that depends on the GPL-2.0-derived stem lexicon holds
+// {"sha256": <hex>} in place of each result item, where <hex> is the SHA-256
+// of Python's line. The C++ line of such a record is compared by its SHA-256,
+// and the golden header gives the count of those records.
+//
 // --shard k/n checks the records whose index modulo n is k, so that ctest can
 // run the large modules in parallel processes. --mismatches <file> writes each
 // golden line that mismatches, in full, to the file.
@@ -17,20 +26,51 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <pthread.h>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "cpu_class.hpp"
 #include "json_line.hpp"
+#include "sha256.hpp"
 #include "parity/modules.hpp"
 
 namespace {
 
 struct Tally {
-    long expected = 0, read = 0, checked = 0, mismatches = 0, divergences = 0, stale = 0;
+    long expected = 0, read = 0, checked = 0, mismatches = 0, divergences = 0, stale = 0, hashed = 0;
 };
+
+// The digest of a hashed record, whose line ends with {"sha256":"<64 hex digits>"}].
+std::optional<std::string> record_digest(const std::string& line) {
+    static const std::string open = "{\"sha256\":\"", close = "\"}]";
+    const size_t n = open.size() + 64 + close.size();
+    if (line.size() < n || line.compare(line.size() - n, open.size(), open) != 0 ||
+        line.compare(line.size() - close.size(), close.size(), close) != 0)
+        return std::nullopt;
+    const std::string hex = line.substr(line.size() - 64 - close.size(), 64);
+    if (hex.find_first_not_of("0123456789abcdef") != std::string::npos) return std::nullopt;
+    return hex;
+}
+
+// The "cpu_class" of a golden header, empty when it has none: the golden then
+// holds no model output.
+std::string header_cpu_class(const std::string& header) {
+    static const std::string key = "\"cpu_class\":\"";
+    const size_t at = header.find(key);
+    if (at == std::string::npos) return "";
+    const size_t start = at + key.size();
+    return header.substr(start, header.find('"', start) - start);
+}
+
+// The "sha256_records" of a golden header, 0 when it has none.
+long header_hashed(const std::string& header) {
+    const size_t at = header.rfind("\"sha256_records\":");
+    return at == std::string::npos ? 0 : std::stol(header.substr(at + 17));
+}
 
 struct Divergence {
     std::string cpp;  // the line that the C++ gives
@@ -72,6 +112,11 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
     Tally t;
     if (lines.empty()) throw std::runtime_error("empty golden file " + path);
     t.expected = json_line::header_count(lines[0]);
+    const long expected_hashed = header_hashed(lines[0]);
+    if (const std::string golden_class = header_cpu_class(lines[0]); !golden_class.empty()) {
+        const std::string why = cpu_class::mismatch(path, golden_class);
+        if (!why.empty()) throw std::runtime_error(why);
+    }
     std::map<std::string, long> by_function;
     // The listed lines the whole file holds: a listed divergence is stale only
     // when the file lacks it, whichever shard runs.
@@ -83,6 +128,8 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
         if (seen.count(lines[i])) present.insert(lines[i]);
     for (size_t i = 1; i < lines.size(); ++i) {
         ++t.read;
+        const std::optional<std::string> digest = record_digest(lines[i]);
+        if (digest) ++t.hashed;
         if (static_cast<long>(i - 1) % shard.count != shard.index) continue;
         std::string got;
         json_line::Value v;
@@ -93,10 +140,12 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
             got = std::string("exception: ") + e.what();
         }
         ++t.checked;
+        const std::string got_digest = digest ? sha256::hex(got) : std::string();
+        const bool same = digest ? got_digest == *digest : got == lines[i];
         const auto listed = divergences.find({module, lines[i]});
         if (listed != divergences.end()) {
             const Divergence& d = listed->second;
-            if (got == lines[i]) {
+            if (same) {
                 ++t.stale;
                 std::cerr << "LISTED DIVERGENCE NOW MATCHES " << module << " (" << d.fix
                           << "): remove it from the list\n  python: " << lines[i].substr(0, 3000) << "\n";
@@ -111,7 +160,7 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
             std::cerr << "LISTED DIVERGENCE GIVES ANOTHER C++ LINE " << module << " (" << d.fix
                       << ")\n  python: " << lines[i].substr(0, 3000) << "\n  listed: " << d.cpp.substr(0, 3000)
                       << "\n  c++:    " << got.substr(0, 3000) << "\n";
-        } else if (got == lines[i]) {
+        } else if (same) {
             continue;
         }
         if (mismatches != nullptr) *mismatches << lines[i] << "\n";
@@ -119,6 +168,8 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
         if (++t.mismatches <= shown) {
             std::cerr << "MISMATCH " << module << "\n  python: " << lines[i].substr(0, 3000)
                       << "\n  c++:    " << got.substr(0, 3000) << "\n";
+            if (digest)
+                std::cerr << "  python sha256: " << *digest << "\n  c++ sha256:    " << got_digest << "\n";
         }
     }
     for (const auto& [key, divergence] : divergences) {
@@ -129,8 +180,14 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
                       << key.second.substr(0, 3000) << "\n";
         }
     }
+    if (t.hashed != expected_hashed) {
+        ++t.mismatches;
+        std::cerr << "HASHED RECORD COUNT " << module << ": the header gives " << expected_hashed << ", the file holds "
+                  << t.hashed << "\n";
+    }
     std::cout << module << ": " << t.expected << " in, " << t.checked << " checked, " << t.mismatches
-              << " mismatches, " << t.divergences << " expected divergences, " << t.stale << " stale entries\n";
+              << " mismatches, " << t.divergences << " expected divergences, " << t.stale << " stale entries, "
+              << t.hashed << " hashed records\n";
     for (const auto& [fn, n] : by_function) std::cout << "  " << fn << ": " << n << " mismatches\n";
     return t;
 }

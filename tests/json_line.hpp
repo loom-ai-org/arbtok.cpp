@@ -8,6 +8,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -60,10 +61,11 @@ inline void append_utf8(std::string& out, unsigned cp) {
 // A parsed JSON value. Numbers are integers: the goldens write every float
 // as its Python repr string.
 struct Value {
-    enum Kind { Null, Bool, Int, String, Array, Object } kind = Null;
+    enum Kind { Null, Bool, Int, Float, String, Array, Object } kind = Null;
     bool boolean = false;
     long long integer = 0;
-    std::string str;
+    double real = 0.0;   // Float, and Int as a double
+    std::string str;     // String, and the text of a Float
     std::vector<Value> items;
     std::vector<std::pair<std::string, Value>> members;
 
@@ -128,10 +130,22 @@ private:
             v.kind = Value::Bool;
             p_ += 5;
         } else {
-            v.kind = Value::Int;
-            const auto res = std::from_chars(s_.data() + p_, s_.data() + s_.size(), v.integer);
-            if (res.ec != std::errc()) throw std::runtime_error("bad number in golden line");
-            p_ = static_cast<size_t>(res.ptr - s_.data());
+            const size_t start = p_;
+            size_t end = p_ + (s_[p_] == '-' ? 1 : 0);
+            while (end < s_.size() && std::string_view("0123456789.eE+-").find(s_[end]) != std::string_view::npos) ++end;
+            const std::string text = s_.substr(start, end - start);
+            if (text.find_first_of(".eE") == std::string::npos) {
+                v.kind = Value::Int;
+                const auto res = std::from_chars(text.data(), text.data() + text.size(), v.integer);
+                if (res.ec != std::errc() || res.ptr != text.data() + text.size())
+                    throw std::runtime_error("bad number in golden line");
+                v.real = static_cast<double>(v.integer);
+            } else {
+                v.kind = Value::Float;
+                v.str = text;
+                v.real = std::stod(text);
+            }
+            p_ = end;
         }
         return v;
     }
@@ -187,6 +201,7 @@ inline std::string dump(const Value& v) {
         case Value::Null: return "null";
         case Value::Bool: return v.boolean ? "true" : "false";
         case Value::Int: return std::to_string(v.integer);
+        case Value::Float: return v.str;
         case Value::String: return quote(v.str);
         case Value::Array: {
             std::string out = "[";

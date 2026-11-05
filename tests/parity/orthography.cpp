@@ -14,12 +14,12 @@ namespace o = arbtok::orthography;
 
 namespace {
 
-// The rawi vocabulary in class-id order, read from tests/data, and the
+// The bundled rawi vocabulary in class-id order, and the
 // synthetic inventory of tools/goldens/orthography.py.
 const std::vector<std::string>& inventory(const std::string& name) {
     static const std::map<std::string, std::vector<std::string>> inventories = [] {
         std::map<std::string, std::vector<std::string>> out;
-        const auto vocab = arbtok::json::loads(arbtok::detail::read_file(ARBTOK_TEST_DATA_DIR "/rawi_v2.vocab.json"));
+        const auto vocab = arbtok::json::loads(arbtok::detail::read_file(arbtok::detail::data_path("models/rawi_v2.vocab.json")));
         const auto& diac = vocab.at("diac_to_idx");
         std::vector<std::string> rawi(diac.members.size());
         for (const auto& [symbol, index] : diac.members) rawi.at(std::stoul(index.text)) = symbol;

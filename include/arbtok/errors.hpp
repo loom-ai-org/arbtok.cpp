@@ -52,8 +52,9 @@ struct NotPortedError : std::runtime_error {
 // The directory that holds the data files. The first of these that is set
 // wins: set_data_dir(), the ARBTOK_DATA_DIR environment variable, the data
 // directory of the install that holds the library (found from the path of the
-// shared library or of the program), the install location compiled into the
-// library.
+// shared library or of the program), the data directory of the installed
+// package that the program was built against with find_package(arbtok), the
+// install location compiled into the library.
 std::string data_dir();
 void set_data_dir(std::string path);
 
