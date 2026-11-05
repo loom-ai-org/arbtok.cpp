@@ -813,6 +813,10 @@ struct Matcher {
     bool node(const Node& n, size_t pos, const Cont* k) {
         switch (n.kind) {
             case Node::Group: {
+                // As in sre, the start mark is set when the match enters the group,
+                // so a conditional inside the group reads the new start.
+                const long start = marks[2 * n.group];
+                marks[2 * n.group] = static_cast<long>(pos);
                 for (const auto& option : n.alts) {
                     Cont c;
                     c.type = Cont::Close;
@@ -821,6 +825,7 @@ struct Matcher {
                     c.next = k;
                     if (seq(option, 0, pos, &c)) return true;
                 }
+                marks[2 * n.group] = start;
                 return false;
             }
             case Node::Alt:
@@ -881,7 +886,8 @@ struct Matcher {
                 return resume(k, pos + len);
             }
             case Node::Cond: {
-                const bool set = marks[2 * n.group] >= 0 && marks[2 * n.group + 1] >= 0;
+                const long a = marks[2 * n.group], b = marks[2 * n.group + 1];
+                const bool set = a >= 0 && b >= a;
                 return seq(n.alts[set ? 0 : 1], 0, pos, k);
             }
             default:
