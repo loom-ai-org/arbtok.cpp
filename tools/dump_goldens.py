@@ -75,6 +75,10 @@ MODULES = [
     "donor_lexicon",
     "diacritize",
     "fusion",
+    "translit",
+    "plugin",
+    "o2i_plugins",
+    "phoonnx",
 ]
 
 

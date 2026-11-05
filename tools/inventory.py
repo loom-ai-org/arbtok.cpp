@@ -24,8 +24,8 @@ BEGIN, END = "<!-- inventory:begin -->", "<!-- inventory:end -->"
 # NAMESPACE gives), their header include/arbtok/<namespace>.hpp, and each name
 # keeps its Python spelling unless RENAMED gives another.
 PORTED = {"_ensemble", "arabizi", "constants", "diacritize", "dialect_lexicon", "dialects", "donor_lexicon", "fusion",
-          "lattice", "lexicon", "nisba", "orthography", "sandhi", "stress", "tashkeel", "textnorm", "tokenizer",
-          "unicode_symbol2label", "util", "version", "waqf"}
+          "lattice", "lexicon", "nisba", "o2i_plugins", "orthography", "plugin", "sandhi", "stress", "tashkeel",
+          "textnorm", "tokenizer", "translit", "unicode_symbol2label", "util", "version", "waqf"}
 NAMESPACE = {"_ensemble": "ensemble"}
 RENAMED = {
     "_ensemble.DEFAULT_ENSEMBLE_ONNX": "default_ensemble_onnx()",
@@ -46,8 +46,8 @@ REEXPORT_TARGET = {"__version__": "VERSION_STR"}
 # The functions that the package itself defines, which include/arbtok/arbtok.hpp holds.
 PACKAGE_FUNCTIONS = {"vocalize"}
 PHASE = {"__init__": 2, "_ensemble": 2, "diacritize": 2, "dialect_lexicon": 2, "donor_lexicon": 2, "fusion": 2,
-         "lexicon": 2, "textnorm": 3, "util": 3, "o2i_plugins": 4, "plugin": 4, "translit": 4}
-NOT_PORTED = {"espeak_wrapper": "not ported: no phoonnx voice path calls it"}
+         "lexicon": 2, "textnorm": 3, "util": 3}
+NOT_PORTED = {"espeak_wrapper": "not ported: phoonnx and scriptconv never import it; no voice path calls it"}
 
 
 def public(name):

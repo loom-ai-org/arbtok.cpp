@@ -140,6 +140,13 @@ bool is_nonspacing_mark(char32_t c) { return in_ranges(kNonspacingMark, c); }
 bool is_other_symbol(char32_t c) { return in_ranges(kOtherSymbol, c); }
 const char* unidata_version() { return kUnidataVersion; }
 bool is_arabic_named_letter(char32_t c) { return in_ranges(kArabicNamedLetter, c); }
+NamedScript named_script(char32_t c) {
+    if (in_ranges(kLatinNamedLetter, c)) return NamedScript::Latin;
+    if (in_ranges(kCyrillicNamedLetter, c)) return NamedScript::Cyrillic;
+    if (in_ranges(kGreekNamedLetter, c)) return NamedScript::Greek;
+    if (in_ranges(kArabicNamedLetter, c)) return NamedScript::Arabic;
+    return NamedScript::Other;
+}
 int decimal_value(char32_t c) {
     size_t lo = 0, hi = std::size(kDecimal);
     while (lo < hi) {

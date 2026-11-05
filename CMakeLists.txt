@@ -95,6 +95,9 @@ add_library(arbtok
     src/dialect_lexicon.cpp
     src/donor_lexicon.cpp
     src/fusion.cpp
+    src/translit.cpp
+    src/plugin.cpp
+    src/o2i_plugins.cpp
 )
 add_library(arbtok::arbtok ALIAS arbtok)
 target_include_directories(arbtok
@@ -171,6 +174,10 @@ if(ARBTOK_BUILD_TESTS)
         tests/parity/donor_lexicon.cpp
         tests/parity/diacritize.cpp
         tests/parity/fusion.cpp
+        tests/parity/translit.cpp
+        tests/parity/plugin.cpp
+        tests/parity/o2i_plugins.cpp
+        tests/parity/phoonnx.cpp
     )
     target_include_directories(arbtok_parity PRIVATE tests)
     # The headers under src/ expose the private functions the goldens call.

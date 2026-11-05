@@ -2,7 +2,9 @@
 
 A C++17 port of [arbtok](https://github.com/TigreGotico/arbtok), rule-based Arabic text-to-IPA with tashkeel diacritization. For each function it ports, the port gives the same bytes as the Python package. `PARITY.md` names the reference versions, lists the whole public surface with the status of each name, and records the gaps.
 
-The port holds the rule modules (constants, orthography, nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version), the text normalization of textnorm and util, and the diacritizers: the rawi ensemble on onnxruntime, `tashkeel`, the lattice-guarded `diacritize` with `arbtok::vocalize`, `fusion`, and the stem, dialect and donor lexicons. textnorm and util speak and read numbers, dates and times in Arabic only. Where the Python package speaks such a form with the module of another language, the call raises `arbtok::NotPortedError`. Where the reference libraries reject a language, the call gives the Python result. The plugins are not ported.
+The port holds the rule modules (constants, orthography, nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version), the text normalization of textnorm and util, and the diacritizers: the rawi ensemble on onnxruntime, `tashkeel`, the lattice-guarded `diacritize` with `arbtok::vocalize`, `fusion`, and the stem, dialect and donor lexicons. textnorm and util speak and read numbers, dates and times in Arabic only. Where the Python package speaks such a form with the module of another language, the call raises `arbtok::NotPortedError`. Where the reference libraries reject a language, the call gives the Python result.
+
+The port also holds the loanword reader `translit`, the G2P class `arbtok::plugin::ArbtokG2PPlugin` that the phoonnx arbtok phonemizer calls, and the three orthography2ipa plugins of `o2i_plugins`. `arbtok::o2i_plugins::register_plugins()` registers them with orthography2ipa.cpp under the name `arbtok`, as the Python entry points do. `espeak_wrapper` is not ported, because no phoonnx voice path calls it.
 
 ## Build
 
@@ -38,13 +40,23 @@ text.text;                          // "ذَهَب الْوَلَد إِلَى �
 text.words[0].provenance;           // "stem-lexicon"
 ```
 
+```cpp
+arbtok::plugin::ArbtokG2PPlugin g2p({"ar-EG"});
+g2p.lang;                           // "arz-EG"
+g2p.transcribe("السلام عليكم");    // "assaˈlaːm ʕaˈleːkum"
+
+arbtok::o2i_plugins::register_plugins();
+orthography2ipa::G2P o2i("ar", {{"normalize", {"arbtok"}}, {"sandhi", {"arbtok"}}});
+o2i.transcribe("السلام عليكم");    // "assaˈlaːm ʕaˈlajkum"
+```
+
 The default stem lexicon is the Hugging Face dataset `TigreGotico/arabic-stem-lexicon`. It is not bundled, because it is derived from a GPL-2.0 corpus. The first use reads it from the Hugging Face cache, or fetches it with `curl` into that cache. With `HF_HUB_OFFLINE` set, a missing file is an error. `arbtok::diacritize::Options::lexicon` names another source (a path, an `http(s)://` URL or an `hf://` id), or none.
 
 A function raises the C++ class that stands for the Python exception: `arbtok::ValueError`, `arbtok::KeyError` and so on. Each is an `arbtok::Error`, and `python_type()` gives the Python class name. A Python warning goes to the handler that `arbtok::set_warning_handler` installs.
 
 ## Tests
 
-`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. The `pyre` suite checks the regex engine of the port against Python `re` on the patterns of textnorm and util. The `exceptions` test checks that a call into the number layer raises the arbtok class of the Python exception. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python, and holds no entry. An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
+`tests/goldens/<module>.jsonl.gz` holds the output of the reference package for each ported module. `arbtok_parity` recomputes every record in C++ and compares the bytes. ctest runs one test per module and splits dialects and diacritize into eight shards each. The `phoonnx` suite is the end-to-end check: it runs the calls that a phoonnx arbtok voice makes into `ArbtokG2PPlugin` and compares the phonemes and the token ids. The `pyre` suite checks the regex engine of the port against Python `re` on the patterns of textnorm and util. The `exceptions` test checks that a call into the number layer raises the arbtok class of the Python exception. `tests/parity/expected_divergences.tsv` lists the golden records that are known to differ from Python: 1042 records of `o2i_plugins` where orthography2ipa.cpp stops a rescore plugin that Python runs (see `PARITY.md`). An entry gives the C++ line that the record must give. A listed record that gives another C++ line, or that starts to match Python, fails its test.
 
 The goldens of the model hold the onnxruntime output of one CPU class, which their header names (see `PARITY.md`). On a CPU of another class, these tests fail with a message that names both classes. To test on such a CPU, dump the model goldens on it first:
 

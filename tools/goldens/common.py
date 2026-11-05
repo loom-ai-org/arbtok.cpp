@@ -191,7 +191,7 @@ def words_of(texts):
 
 
 #: The number of result items at the end of a record, where it is not one.
-RESULT_ITEMS = {("diacritize", "word"): 2}
+RESULT_ITEMS = {("diacritize", "word"): 2, ("phoonnx", "voice"): 3}
 
 
 def hashed(module, record, line):

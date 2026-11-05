@@ -30,10 +30,10 @@ orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned t
 
 `tools/inventory.py` reads the surface from the installed package with `ast` and writes the table below. It exits with 1 when a name marked as ported does not occur in its header.
 
-arbtok has no command-line interface. Its only entry points are the three orthography2ipa plugins of `o2i_plugins` (normalize, rescore and sandhi), which phase 4 ports.
+arbtok has no command-line interface. Its only entry points are the three orthography2ipa plugins of `o2i_plugins` (normalize, rescore and sandhi). `arbtok::o2i_plugins::register_plugins()` registers them with orthography2ipa.cpp (see Plugins and the phoonnx front end).
 
 <!-- inventory:begin -->
-362 public symbols, 320 ported.
+362 public symbols, 346 ported.
 
 The count covers 25 modules and the package itself: each module-level name, each public class member, and each name of the package `__all__`.
 
@@ -150,21 +150,21 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `donor_lexicon.BUNDLED_DONOR` | `arbtok::donor_lexicon::BUNDLED_DONOR` | ported |
 | `donor_lexicon.bundled_path` | `arbtok::donor_lexicon::bundled_path` | ported |
 | `donor_lexicon.ensure_registered` | `arbtok::donor_lexicon::ensure_registered` | ported |
-| `espeak_wrapper.TextChunks` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.RawPhonemizedChunks` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.PhonemizedChunks` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakError` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.ESPEAK_LANGS` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.get_lang` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.tashkeel` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.phonemize_string` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.phonemize_to_list` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.add_diacritics` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.phonemize` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.match_lang` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.remove_punctuation` |  | not ported: no phoonnx voice path calls it |
-| `espeak_wrapper.EspeakPhonemizer.chunk_text` |  | not ported: no phoonnx voice path calls it |
+| `espeak_wrapper.TextChunks` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.RawPhonemizedChunks` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.PhonemizedChunks` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakError` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.ESPEAK_LANGS` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.get_lang` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.tashkeel` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.phonemize_string` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.phonemize_to_list` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.add_diacritics` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.phonemize` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.match_lang` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.remove_punctuation` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
+| `espeak_wrapper.EspeakPhonemizer.chunk_text` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
 | `fusion.logprobs` | `arbtok::fusion::logprobs` | ported |
 | `fusion.Hypothesis` | `arbtok::fusion::Hypothesis` | ported |
 | `fusion.FusionDiacritizer` | `arbtok::fusion::FusionDiacritizer` | ported |
@@ -200,16 +200,16 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `lexicon.StemLexicon.ambiguous` | `arbtok::lexicon::StemLexicon::ambiguous` | ported |
 | `nisba.NOT_NISBA` | `arbtok::nisba::NOT_NISBA` | ported |
 | `nisba.restore_nisba` | `arbtok::nisba::restore_nisba` | ported |
-| `o2i_plugins.ArbtokDiacritizer` |  | phase 4 |
-| `o2i_plugins.ArbtokDiacritizer.PATHS` |  | phase 4 |
-| `o2i_plugins.ArbtokDiacritizer.normalize` |  | phase 4 |
-| `o2i_plugins.ArbtokDiacritizer.language_codes` |  | phase 4 |
-| `o2i_plugins.ArbtokRescorers` |  | phase 4 |
-| `o2i_plugins.ArbtokRescorers.rescorers` |  | phase 4 |
-| `o2i_plugins.ArbtokRescorers.language_codes` |  | phase 4 |
-| `o2i_plugins.ArbtokSandhi` |  | phase 4 |
-| `o2i_plugins.ArbtokSandhi.apply` |  | phase 4 |
-| `o2i_plugins.ArbtokSandhi.language_codes` |  | phase 4 |
+| `o2i_plugins.ArbtokDiacritizer` | `arbtok::o2i_plugins::ArbtokDiacritizer` | ported |
+| `o2i_plugins.ArbtokDiacritizer.PATHS` | `arbtok::o2i_plugins::ArbtokDiacritizer::PATHS` | ported |
+| `o2i_plugins.ArbtokDiacritizer.normalize` | `arbtok::o2i_plugins::ArbtokDiacritizer::normalize` | ported |
+| `o2i_plugins.ArbtokDiacritizer.language_codes` | `arbtok::o2i_plugins::ArbtokDiacritizer::language_codes` | ported |
+| `o2i_plugins.ArbtokRescorers` | `arbtok::o2i_plugins::ArbtokRescorers` | ported |
+| `o2i_plugins.ArbtokRescorers.rescorers` | `arbtok::o2i_plugins::ArbtokRescorers::rescorers` | ported |
+| `o2i_plugins.ArbtokRescorers.language_codes` | `arbtok::o2i_plugins::ArbtokRescorers::language_codes` | ported |
+| `o2i_plugins.ArbtokSandhi` | `arbtok::o2i_plugins::ArbtokSandhi` | ported |
+| `o2i_plugins.ArbtokSandhi.apply` | `arbtok::o2i_plugins::ArbtokSandhi::apply` | ported |
+| `o2i_plugins.ArbtokSandhi.language_codes` | `arbtok::o2i_plugins::ArbtokSandhi::language_codes` | ported |
 | `orthography.ORTHOGRAPHIC_MARKS` | `arbtok::orthography::ORTHOGRAPHIC_MARKS` | ported |
 | `orthography.MADDA` | `arbtok::orthography::MADDA` | ported |
 | `orthography.VOCALIC_MARKS` | `arbtok::orthography::VOCALIC_MARKS` | ported |
@@ -217,12 +217,12 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `orthography.allowed_classes` | `arbtok::orthography::allowed_classes` | ported |
 | `orthography.pinned_class` | `arbtok::orthography::pinned_class` | ported |
 | `orthography.project_class` | `arbtok::orthography::project_class` | ported |
-| `plugin.PUNCT_STRIP` |  | phase 4 |
-| `plugin.ArbtokG2PPlugin` |  | phase 4 |
-| `plugin.ArbtokG2PPlugin.language_codes` |  | phase 4 |
-| `plugin.ArbtokG2PPlugin.normalize` |  | phase 4 |
-| `plugin.ArbtokG2PPlugin.transcribe` |  | phase 4 |
-| `plugin.ArbtokG2PPlugin.transcribe_word` |  | phase 4 |
+| `plugin.PUNCT_STRIP` | `arbtok::plugin::PUNCT_STRIP` | ported |
+| `plugin.ArbtokG2PPlugin` | `arbtok::plugin::ArbtokG2PPlugin` | ported |
+| `plugin.ArbtokG2PPlugin.language_codes` | `arbtok::plugin::ArbtokG2PPlugin::language_codes` | ported |
+| `plugin.ArbtokG2PPlugin.normalize` | `arbtok::plugin::ArbtokG2PPlugin::normalize` | ported |
+| `plugin.ArbtokG2PPlugin.transcribe` | `arbtok::plugin::ArbtokG2PPlugin::transcribe` | ported |
+| `plugin.ArbtokG2PPlugin.transcribe_word` | `arbtok::plugin::ArbtokG2PPlugin::transcribe_word` | ported |
 | `sandhi.NUN_ASSIMILATION` | `arbtok::sandhi::NUN_ASSIMILATION` | ported |
 | `sandhi.apply_cross_word` | `arbtok::sandhi::apply_cross_word` | ported |
 | `stress.stress_ipa` | `arbtok::stress::stress_ipa` | ported |
@@ -361,16 +361,16 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `tokenizer.Sentence.normalized` | `arbtok::tokenizer::Sentence::normalized` | ported |
 | `tokenizer.Sentence.tokens` | `arbtok::tokenizer::Sentence::tokens` | ported |
 | `tokenizer.Sentence.ipa` | `arbtok::tokenizer::Sentence::ipa` | ported |
-| `translit.DONOR_LANG` |  | phase 4 |
-| `translit.DONOR_BY_SCRIPT` |  | phase 4 |
-| `translit.SEGMENT_MAP` |  | phase 4 |
-| `translit.nativization_table` |  | phase 4 |
-| `translit.ESTABLISHED_LOANS` |  | phase 4 |
-| `translit.is_latin` |  | phase 4 |
-| `translit.segment_ipa` |  | phase 4 |
-| `translit.guest_script` |  | phase 4 |
-| `translit.nativize` |  | phase 4 |
-| `translit.transliterate` |  | phase 4 |
+| `translit.DONOR_LANG` | `arbtok::translit::DONOR_LANG` | ported |
+| `translit.DONOR_BY_SCRIPT` | `arbtok::translit::DONOR_BY_SCRIPT` | ported |
+| `translit.SEGMENT_MAP` | `arbtok::translit::SEGMENT_MAP` | ported |
+| `translit.nativization_table` | `arbtok::translit::nativization_table` | ported |
+| `translit.ESTABLISHED_LOANS` | `arbtok::translit::ESTABLISHED_LOANS` | ported |
+| `translit.is_latin` | `arbtok::translit::is_latin` | ported |
+| `translit.segment_ipa` | `arbtok::translit::segment_ipa` | ported |
+| `translit.guest_script` | `arbtok::translit::guest_script` | ported |
+| `translit.nativize` | `arbtok::translit::nativize` | ported |
+| `translit.transliterate` | `arbtok::translit::transliterate` | ported |
 | `unicode_symbol2label.UNICODE_SYMBOL_TO_LABEL` | `arbtok::unicode_symbol2label::items(), get()` | ported |
 | `util.LOG` |  | not ported: the Python logger; the port writes no log |
 | `util.match_lang` | `arbtok::util::match_lang` | ported |
@@ -419,13 +419,17 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | lattice | constants 2, defers_to_cascade 5186, word_ipa 16616, word_lattice 2770, spec_word_exception 3832 | 28406 |
 | lexicon | constants 3, parse 916, parse_shares 916, source 1, get 31654, ambiguous 6666, contains 1333, len 1, env 56 | 41546 |
 | nisba | constants 1, restore_nisba 9581 | 9582 |
+| o2i_plugins | constants 1, language_codes 3, rescorers 58, normalize 752, sandhi 824, g2p 7971 | 9609 |
 | orthography | constants 5, allowed_classes 354, pinned_class 177, project_class 17374, source_marks 21567 | 39477 |
+| phoonnx | voice 8746 | 8746 |
+| plugin | constants 1, init 21, normalize 1406, transcribe 4211, transcribe_word 21630 | 27269 |
 | pyre | patterns 297, finditer 283338, fullmatch 43984, match 52344, search 19629, engine 23450 | 423042 |
 | sandhi | constants 1, apply_cross_word 30725, pausal 3465, has_article 394, is_bare_wasl_alif 394 | 34979 |
 | stress | first_segment_len 6077, stress_ipa 190275, stress_words 6078 | 202430 |
 | tashkeel | messages 54, TashkeelDiacritizer 2960 | 3014 |
 | textnorm | const 1, is_arabic_lang 20860, constants 11, tables 65, describe 227, validation 46, normalize_asr 189083, normalize_for_tts 132664, languages 55174 | 398131 |
 | tokenizer | normalize_unicode 7761, elide_silent_alif 7761, reorder_diacritics 7761, sentence 21624, words 5406 | 50313 |
+| translit | constants 11, is_latin 7646, guest_script 8131, segment_ipa 1856, nativization_table 83, targets 58, established 84, project 368, nativize 6912, transliterate 13640 | 38789 |
 | unicode_symbol2label | items 4171, size 1, lookup 57 | 4229 |
 | util | constants 3, normalize 14125, match_lang 646, resolve_thousands_or_decimal 123, is_fraction 41, pronounce_date 3256, pronounce_time 216, languages 32186 | 50596 |
 | version | constants 5 | 5 |
@@ -444,8 +448,11 @@ The goldens do not hold the default stem lexicon, which is GPL-2.0-derived data,
 | lexicon | 2830: source 1, get 2586, ambiguous 91, contains 151, len 1 |
 | diacritize | 14249: word 7304, text 372, vocalize 6573 |
 | fusion | 5678: fusion 5678 |
+| o2i_plugins | 2142: normalize 252, g2p 1890 |
+| plugin | 1355: normalize 385, transcribe 970 |
+| phoonnx | 1112: voice 1112 |
 
-The other 18 golden files that `tools/dump_goldens.py` writes hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
+The other 19 golden files that `tools/dump_goldens.py` writes hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
 
 `tests/goldens/ensemble.jsonl.gz` (32432 records) and `tests/goldens/ensemble_unicode.jsonl.gz` (44152 records) hold the goldens of the ensemble. `ensemble_parity` compares them, and the logits of 32306 records are bit-identical to those of onnxruntime in Python on the same machine. A record that holds the raw logits must agree within 1e-6, and a NaN difference fails it. The committed golden holds the raw logits of 2403 records and the SHA-256 of the logits of each other record. A record with only the SHA-256 must agree bit for bit.
 
@@ -502,6 +509,13 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | fusion | logprobs sums the exps in order, not pairwise | 11301 of 29945 |
 | fusion | logprobs uses the libm `std::exp` | 5027 of 29945 |
 | fusion | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 78 of 29945 |
+| translit | `_RAISED` maps e to a, not i | 26 of 38789 |
+| plugin | normalize never restores the marks | 1048 of 6818 (every 4th record) |
+| plugin | the full register keeps the pausal forms | 79 of 6818 (every 4th record) |
+| o2i_plugins | ArbtokSandhi drops a stress mark at the end of a word | 28 of 9609 |
+| o2i_plugins | the rescore plugin contributes no lattice rescorer | 749 of 9609 |
+| phoonnx | normalize never restores the marks | 1242 of 2187 (every 4th record) |
+| phoonnx | the full register keeps the pausal forms | 194 of 2187 (every 4th record) |
 
 Two fusion mutations survive. Equal log-probabilities in ascending index order give 0 mismatches, because no tie among the top classes occurs on the corpus. A lattice weight of the opposite sign gives 0 mismatches, because the lattice cost of every licensed reading is 0.0 in Python too: each slot's top candidate costs 0.0 in the specs of these lects (73992 n-best entries in the fusion goldens, 7959 slots in the lattice goldens).
 
@@ -524,7 +538,7 @@ The CPU class names the checks of that function that change a kernel this model 
 
 The checks from line 546 on are inside the avx2 check, and lines 650 and 665 are inside the avx512f check. A CPU without AVX is class `sse`. The F16C (line 585), hybrid-core (line 593) and AVX-NE-CONVERT (line 694) checks change only float16 kernels and the thread count. `tools/goldens/cpu_class.py` and `tests/cpu_class.hpp` compute the class from the same bits. The committed goldens come from an Intel i9-11900H, class `avx+avx2+avx512f+avx512core+avx512vnni`. qemu with `-cpu Haswell` is class `avx+avx2`.
 
-A golden that holds model output names its CPU class in the header as `cpu_class`. `tools/dump_goldens.py` counts the onnxruntime session runs of each module, and writes the class into the header of each module that runs the model. `tools/goldens/ensemble.py` always writes it. The model goldens are tashkeel, diacritize, fusion and ensemble. The other goldens run no session. The Python reference gives other records for each model golden under `qemu-x86_64-static -cpu Haswell`, which is class `avx+avx2`:
+A golden that holds model output names its CPU class in the header as `cpu_class`. `tools/dump_goldens.py` counts the onnxruntime session runs of each module, and writes the class into the header of each module that runs the model. `tools/goldens/ensemble.py` always writes it. The model goldens are tashkeel, diacritize, fusion, ensemble, plugin, phoonnx and o2i_plugins. o2i_plugins runs the model only in its normalize records under `ARBTOK_DIACRITIZER=fusion`. The other goldens run no session. The Python reference gives other records for each model golden under `qemu-x86_64-static -cpu Haswell`, which is class `avx+avx2`:
 
 | Golden | Records that differ under qemu Haswell |
 | --- | --- |
@@ -545,6 +559,7 @@ The fusion logprobs records are model output too: their input rows are the logit
 - A regex alternation tries its alternatives in Python order. A pattern is never replaced by a longest-match lexer.
 - `$` in a Python `re` pattern also matches before a final `"\n"`. The port reproduces this where a rule ends in `$`.
 - Slices with a negative or an out-of-range index follow Python slice rules.
+- `translit.transliterate` replaces the foreign phonemes of a word in the iteration order of a Python `set`, which follows the hash seed. The port takes them in the order they first occur. Under four hash seeds, Python gave the same result on all 11948 calls that were checked.
 - The goldens write a Python `set` sorted, because its iteration order follows the hash seed. A `dict` keeps its insertion order. A dict whose order comes from a spec file is written as sorted items.
 - A float is written in Python `repr` form, and the build sets `-ffp-contract=off`, so that a fused multiply-add cannot change a result.
 - `fusion.logprobs` keeps the float32 arithmetic of numpy 2.5.4. The exp is numpy's own SIMD algorithm (the AVX2 and AVX-512F loops), which is not correctly rounded, and every NaN gives the positive quiet NaN. The sum is numpy's pairwise sum over all elements. The log is `math.log` in double, and the subtraction is in float32. `np.argsort(lp)[::-1]` is a stable ascending sort, NaN last, reversed. numpy sorts with x86-simd-sort, whose order of equal values the port does not reproduce in general; on the 59209 logit rows of the corpus, and on five sets of allowed classes, the two orders agree.
@@ -573,11 +588,12 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
+| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` checks the inventory of each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. Python has no such check | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. A word whose paths hold a phoneme that the spec does not declare (ɑ, ɪ, ʊ and their long forms) raises `std::runtime_error`. 1042 of the 7971 g2p records are expected divergences |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
 
 ## Expected divergences
 
-`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds no entry: every golden record gives the bytes of Python.
+`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds 1039 entries for the 1042 g2p records of `o2i_plugins` that the rescore check of orthography2ipa.cpp stops. Three of those records repeat the line of another, and an entry covers each record with its line. With that check skipped for a result equal to its input, all 9609 o2i_plugins records give the bytes of Python. Every other golden record gives the bytes of Python.
 
 ## Stem lexicon
 
@@ -601,7 +617,7 @@ These differences are not reached by the goldens, or are deliberate.
 | numpy picks its exp loop by CPU; the replicated loop is the AVX2 and AVX-512F one | `np_expf` gives those bits on every CPU. On a CPU where numpy takes another loop, the Python result can differ |
 | a diacritizer is a Python object that the GIL serializes | `diacritize::diacritize` holds a mutex over its cache, but an instance of `LatticeDiacritizer` or `FusionDiacritizer` is not safe to share between threads, and orthography2ipa.cpp keeps process-wide state without a lock |
 
-## espeak_wrapper and plugin
+## Plugins and the phoonnx front end
 
 `espeak_wrapper.py` is not ported. No phoonnx voice path calls it:
 
@@ -609,7 +625,19 @@ These differences are not reached by the goldens, or are deliberate.
 - phoonnx gets its Arabic phonemizer from the scriptconv registry (`phoonnx/config.py:570` and `:604`). scriptconv at `origin/dev` `bc7d842` maps Arabic to `ArbtokPhonemizer`, which imports `arbtok.plugin.ArbtokG2PPlugin` (`phonemizers/ar.py:245`) and `arbtok.spec_for_lang` (`phonemizers/ar.py:267`). scriptconv has no reference to `espeak_wrapper`.
 - No module of arbtok imports `espeak_wrapper`, and no package in the reference environment imports it.
 
-`plugin.py` holds `ArbtokG2PPlugin`, the grapheme-to-phoneme class that scriptconv calls. It has no OVOS plugin glue. It is on the phoonnx voice path, so phase 4 ports it.
+`plugin.py` holds `ArbtokG2PPlugin`, the grapheme-to-phoneme class that scriptconv calls. It has no OVOS plugin glue. It is on the phoonnx voice path, so the port holds it as `arbtok::plugin::ArbtokG2PPlugin`. The keyword `register` is `Options::register_name`, because `register` is a C++ keyword.
+
+`o2i_plugins.py` holds the three plugins that Python registers as the entry points `orthography2ipa.normalize`, `orthography2ipa.rescore` and `orthography2ipa.sandhi`, each named `arbtok`. `arbtok::o2i_plugins::register_plugins()` registers the C++ classes with orthography2ipa.cpp under the same name. A plugin acts only where a caller or a spec names it, as in `G2P("ar", {{"normalize", {"arbtok"}}})`. orthography2ipa.cpp calls a normalize and a sandhi plugin twice, to check that it is deterministic, and the arbtok plugins are. The g2p corpus of `o2i_plugins` runs `orthography2ipa.G2P(lang, plugins=...)` with all three plugins and with each one alone: over every Arabic sdist test string under `ar`, and over 12 test strings for each supported lect.
+
+`ArbtokSandhi.apply` in arbtok 0.0.2a71 indexes the result of `apply_cross_word` by row, but that result leaves out the pause rows (`o2i_plugins.py:187-188`). A pause flag on any word but the last raises `IndexError`, so a G2P with the arbtok sandhi plugin raises on a sentence with punctuation inside it. The port raises the same `arbtok::IndexError`. 162 of the 824 sandhi records and 737 of the 7971 g2p records hold it.
+
+### End to end: the front end of a phoonnx voice
+
+No published phoonnx voice uses arbtok. The voice index of phoonnx at `origin/dev` `f185255` has no arbtok entry. The JSON files of the 94 TTS model repositories of TigreGotico, Jarbas and OpenVoiceOS on Hugging Face (388 files) name no arbtok phoneme type, and a Hugging Face search for arbtok finds no model and no dataset. The Arabic voices use espeak, mantoq, graphemes, unicode and shami.
+
+The end-to-end check therefore runs the phoonnx arbtok path from source: phoonnx 1.94.6a1 and scriptconv 0.0.4a42, with the config of the voice `OpenVoiceOS/phoonnx_ar_miro_espeak_V2` and its phoneme type set to `arbtok`. `tools/goldens/record_phoonnx.py` runs the voice's text front end (`TTSVoice._iter_synthesis_ids`: the phoonnx normalizer, the chunker, `ArbtokPhonemizer`, the tokenizer) on 8754 inputs: every sdist test string under `ar`, the gold sentences under their own lect, every 4th Arabic test string in the full register, and 10 short strings for each lect. It records each `ArbtokG2PPlugin` call that scriptconv makes, with the phoneme lists and the token ids that phoonnx makes of the results, in `tests/data/phoonnx_calls.jsonl.gz`. 8746 inputs reach arbtok. 8 make no call, and none raises.
+
+`tools/goldens/phoonnx.py` replays the calls on the reference arbtok and writes each record with the phonemes and the ids. Where a replayed result equals the recorded one, it checks that its own phoneme and id rules give what phoonnx gave: every `(...)` run removed, the rest split into code points, empty lists left out, a blank around each known phoneme, BOS and EOS around the list. They do on all 8746 records. The `phoonnx` suite runs the same calls on `arbtok::plugin::ArbtokG2PPlugin`, with one engine per voice language and register as scriptconv keeps one, and compares the outputs, the phonemes and the ids byte for byte.
 
 ## Paths the goldens do not reach
 

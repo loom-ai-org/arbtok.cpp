@@ -3,7 +3,7 @@
 The C++ port must match Python's str.lower, str.upper, str.isspace,
 str.isalnum, str.isalpha and str.isdigit, unicodedata.category(c) == "Mn"
 and == "So", the decimal value that int() reads, and the letters whose
-unicodedata.name starts with "ARABIC".
+unicodedata.name starts with "ARABIC", "LATIN", "CYRILLIC" or "GREEK".
 The tables are taken from Python itself rather than from ICU, so the two agree
 on the same Unicode version; the version is written into the generated file.
 
@@ -53,8 +53,13 @@ def arabic_script_letter(c):
     return unicodedata.category(c) == "Lo" and any(lo <= ord(c) <= hi for lo, hi in ARABIC_BLOCKS)
 
 
-def arabic_named_letter(c):
-    return unicodedata.category(c).startswith("L") and unicodedata.name(c, "").startswith("ARABIC")
+def named_letter(prefix):
+    def predicate(c):
+        return unicodedata.category(c).startswith("L") and unicodedata.name(c, "").startswith(prefix)
+    return predicate
+
+
+arabic_named_letter = named_letter("ARABIC")
 
 
 def decimal_runs():
@@ -103,6 +108,9 @@ def main():
                        ("kCased", cased),
                        ("kArabicScriptLetter", arabic_script_letter),
                        ("kArabicNamedLetter", arabic_named_letter),
+                       ("kLatinNamedLetter", named_letter("LATIN")),
+                       ("kCyrillicNamedLetter", named_letter("CYRILLIC")),
+                       ("kGreekNamedLetter", named_letter("GREEK")),
                       ):
         rs = ranges(pred)
         w(f"static const char32_t {name}[{len(rs)}][2] = {{\n")

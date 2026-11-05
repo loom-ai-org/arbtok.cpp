@@ -31,6 +31,10 @@ bool is_nonspacing_mark(char32_t c);  // unicodedata.category(c) == "Mn"
 bool is_other_symbol(char32_t c);     // unicodedata.category(c) == "So"
 // Category L* and a unicodedata.name that starts with "ARABIC".
 bool is_arabic_named_letter(char32_t c);
+// The script that the unicodedata.name of a letter (category L*) starts with,
+// among the four that translit.guest_script reads.
+enum class NamedScript { Other, Latin, Cyrillic, Greek, Arabic };
+NamedScript named_script(char32_t c);
 // unicodedata.decimal(c), the digit value that int() reads; -1 for none.
 int decimal_value(char32_t c);
 // Category Lo in the Arabic, Arabic Supplement, Arabic Extended-A and -B blocks.
