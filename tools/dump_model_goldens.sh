@@ -14,7 +14,8 @@
 # ensemble_unicode.py writes, and fails unless its records are byte-identical
 # to the committed file. It does the same for a model golden whose class is
 # the class of this CPU. The numbers goldens come from their own scripts under
-# tools/goldens, and --check names them without a dump.
+# tools/goldens, and --check names them without a dump. --check fails when
+# it would skip any other golden.
 #
 # It needs uv, curl, the stem lexicon in the Hugging Face cache (see README),
 # and about 3 GB in <out dir>.work for the reference venv and the sources.
@@ -126,17 +127,29 @@ echo "dumped ${#model[@]} model goldens for class $here into $out: ${model[*]}"
 same() { cmp -s <(gzip -dc "$1") <(gzip -dc "$2"); }
 
 if [ "$check" = --check ]; then
-    dumpable=" ensemble_unicode $("$py" -I - "$root/tools/dump_goldens.py" <<'PY'
-import ast, sys
-for node in ast.parse(open(sys.argv[1]).read()).body:
-    if isinstance(node, ast.Assign) and getattr(node.targets[0], "id", "") == "MODULES":
-        print(" ".join(ast.literal_eval(node.value)))
+    # The module list comes from importing the dumper, so any form of the
+    # MODULES assignment gives the list that dump_goldens.py itself runs.
+    modules=$("$py" -I - "$root/tools" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import dump_goldens
+print(" ".join(dump_goldens.MODULES))
 PY
-) "
+)
+    dumpable=" ensemble_unicode $modules "
     checked=()
+    skipped=()
     for m in "${other[@]}"; do
-        if [[ $dumpable == *" $m "* ]]; then checked+=("$m"); else echo "not dumped by this script: $m"; fi
+        if [[ $dumpable == *" $m "* ]]; then checked+=("$m"); else skipped+=("$m"); fi
     done
+    # Only the numbers goldens come from other scripts. Any other golden that
+    # this check would skip is an error, not a pass.
+    not_dumped="numbers_ar numbers_calls numbers_dates_ar numbers_dispatch"
+    if [ "$(printf '%s\n' "${skipped[@]}" | sort | xargs)" != "$not_dumped" ]; then
+        echo "--check would skip ${skipped[*]}; only $not_dumped come from other scripts" >&2
+        exit 1
+    fi
+    for m in "${skipped[@]}"; do echo "not dumped by this script: $m"; done
     mkdir -p "$work/check"
     dump "$work/check" "${checked[@]}"
     bad=0
