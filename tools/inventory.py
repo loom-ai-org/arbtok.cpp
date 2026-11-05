@@ -24,15 +24,15 @@ BEGIN, END = "<!-- inventory:begin -->", "<!-- inventory:end -->"
 # include/arbtok/<module>.hpp, and each name keeps its Python spelling unless
 # RENAMED gives another.
 PORTED = {"arabizi", "constants", "dialects", "lattice", "nisba", "orthography", "sandhi", "stress", "tashkeel",
-          "tokenizer", "unicode_symbol2label", "version", "waqf"}
+          "textnorm", "tokenizer", "unicode_symbol2label", "util", "version", "waqf"}
 RENAMED = {
     "lattice.DEFAULT_RESCORERS": "default_rescorers()",
     "unicode_symbol2label.UNICODE_SYMBOL_TO_LABEL": "items(), get()",
 }
-# Names of a ported module that a later phase ports, and names of the other
-# modules that this phase ports.
+# Names of a ported module that a later phase ports, and names of a ported
+# module that the port leaves out.
 LATER_IN_PORTED = {"tashkeel.TashkeelDiacritizer": 2, "tashkeel.TashkeelDiacritizer.diacritize": 2}
-PORTED_ELSEWHERE = {"textnorm.ARABIC_LANGUAGE_CODES", "textnorm.is_arabic_lang"}
+NOT_PORTED_NAMES = {"util.LOG": "not ported: the Python logger; the port writes no log"}
 # The package __all__: the module each re-exported name comes from.
 REEXPORTS = {"AsrNorm": "textnorm", "Lect": "dialects", "TtsNorm": "textnorm", "__version__": "version",
              "is_arabic_lang": "textnorm", "normalize_asr": "textnorm", "normalize_for_tts": "textnorm",
@@ -103,7 +103,7 @@ def rows(package_dir):
             for name in all_names:
                 source = REEXPORTS[name]
                 key = f"{source}.{name}"
-                if source in PORTED or key in PORTED_ELSEWHERE:
+                if source in PORTED:
                     target = REEXPORT_TARGET.get(name, name)
                     out.append(("arbtok", name, cpp_name(source, target), "ported", source, target))
                 else:
@@ -115,7 +115,9 @@ def rows(package_dir):
                 out.append((module, name, "", NOT_PORTED[module], None, None))
             elif key in LATER_IN_PORTED:
                 out.append((module, name, "", f"phase {LATER_IN_PORTED[key]}", None, None))
-            elif module in PORTED or key in PORTED_ELSEWHERE:
+            elif key in NOT_PORTED_NAMES:
+                out.append((module, name, "", NOT_PORTED_NAMES[key], None, None))
+            elif module in PORTED:
                 target = RENAMED.get(key, name.replace(".", "::"))
                 out.append((module, name, cpp_name(module, name), "ported", module, target))
             else:

@@ -1,0 +1,22 @@
+# Writes a C++ source that holds the bytes of each data file, and the function
+# tables::embedded(name) that returns them.
+#   cmake -DOUT=<file.cpp> -DFILES=<a.json;b.json> -P embed.cmake
+set(_body "#include <stdexcept>\n#include <string>\n\n#include \"tables.hpp\"\n\nnamespace arbtok::numbers::tables {\n\nnamespace {\n\n")
+set(_cases "")
+set(_index 0)
+foreach(_file IN LISTS FILES)
+    file(READ "${_file}" _hex HEX)
+    string(LENGTH "${_hex}" _hex_length)
+    math(EXPR _size "${_hex_length} / 2")
+    string(REGEX REPLACE "([0-9a-f][0-9a-f])" "0x\\1," _bytes "${_hex}")
+    string(REGEX REPLACE "((0x[0-9a-f][0-9a-f],){32})" "\\1\n" _bytes "${_bytes}")
+    get_filename_component(_name "${_file}" NAME)
+    string(APPEND _body "const unsigned char kData${_index}[] = {\n${_bytes}0x00};\n\n")
+    string(APPEND _cases "    if (name == \"${_name}\") return {reinterpret_cast<const char*>(kData${_index}), ${_size}};\n")
+    math(EXPR _index "${_index} + 1")
+endforeach()
+string(APPEND _body "}  // namespace\n\nstd::string_view embedded(std::string_view name) {\n${_cases}")
+string(APPEND _body "    throw std::out_of_range(\"no embedded data file \" + std::string(name));\n}\n\n")
+string(APPEND _body "}  // namespace arbtok::numbers::tables\n")
+file(WRITE "${OUT}.tmp" "${_body}")
+file(RENAME "${OUT}.tmp" "${OUT}")

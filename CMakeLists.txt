@@ -33,6 +33,18 @@ if(NOT TARGET orthography2ipa::orthography2ipa)
     add_library(orthography2ipa::orthography2ipa ALIAS orthography2ipa)
 endif()
 
+# The test registry is enabled before src/numbers, so that its parity tests
+# are registered with the others. A stride above 1 checks only every n-th
+# golden record, for the slow sanitizer builds.
+if(ARBTOK_BUILD_TESTS)
+    enable_testing()
+    set(ARBTOK_PARITY_STRIDE 1 CACHE STRING "Check every n-th golden record")
+endif()
+
+# The Arabic parts of ovos-number-parser, ovos-date-parser and unicode-rbnf
+# that textnorm and util call. Their tables are compiled into the library.
+add_subdirectory(src/numbers)
+
 # ── Library ──────────────────────────────────────────────────────────────────
 # The data files are installed here, and the library looks here unless
 # set_data_dir() or ARBTOK_DATA_DIR names another directory.
@@ -60,6 +72,11 @@ add_library(arbtok
     src/arabizi.cpp
     src/unicode_symbol2label.cpp
     src/textnorm.cpp
+    src/textnorm_detail.cpp
+    src/textnorm_asr.cpp
+    src/textnorm_tts.cpp
+    src/pyre.cpp
+    src/util.cpp
     src/dialects.cpp
     src/stress.cpp
     src/sandhi.cpp
@@ -79,7 +96,7 @@ target_include_directories(arbtok
 target_include_directories(arbtok PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/orthography2ipa.cpp/src)
 # dialects.hpp and lattice.hpp hand out orthography2ipa types, so
 # orthography2ipa is part of the public interface.
-target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(arbtok PUBLIC orthography2ipa::orthography2ipa arbtok::numbers PRIVATE ${CMAKE_DL_LIBS})
 target_compile_definitions(arbtok PRIVATE ARBTOK_DEFAULT_DATA_DIR="${_arbtok_default_data}"
     ARBTOK_DATA_FROM_LIBDIR="${_arbtok_data_from_lib}" ARBTOK_DATA_FROM_BINDIR="${_arbtok_data_from_bin}")
 set_target_properties(arbtok PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -92,12 +109,12 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(orthography2ipa PRIVATE -ffp-contract=off)
 endif()
 
-install(TARGETS arbtok EXPORT arbtokTargets
+install(TARGETS arbtok arbtok_numbers EXPORT arbtokTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR})
+install(DIRECTORY data/ DESTINATION ${ARBTOK_DATA_INSTALL_DIR} PATTERN numbers EXCLUDE)
 install(EXPORT arbtokTargets
     NAMESPACE arbtok::
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/arbtok)
@@ -113,7 +130,6 @@ install(FILES
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(ARBTOK_BUILD_TESTS)
-    enable_testing()
     find_package(ZLIB REQUIRED)
     find_package(Threads REQUIRED)
 
@@ -127,6 +143,8 @@ if(ARBTOK_BUILD_TESTS)
         tests/parity/arabizi.cpp
         tests/parity/unicode_symbol2label.cpp
         tests/parity/textnorm.cpp
+        tests/parity/util.cpp
+        tests/parity/pyre.cpp
         tests/parity/dialects.cpp
         tests/parity/stress.cpp
         tests/parity/sandhi.cpp
@@ -137,7 +155,8 @@ if(ARBTOK_BUILD_TESTS)
     target_include_directories(arbtok_parity PRIVATE tests)
     # The headers under src/ expose the private functions the goldens call.
     target_include_directories(arbtok_parity PRIVATE src)
-    target_compile_definitions(arbtok_parity PRIVATE ARBTOK_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data")
+    target_compile_definitions(arbtok_parity PRIVATE ARBTOK_TEST_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/data"
+        ARBTOK_GOLDENS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens")
     target_link_libraries(arbtok_parity PRIVATE arbtok orthography2ipa::orthography2ipa ZLIB::ZLIB Threads::Threads)
     # One parity test per module, so that ctest -j runs the modules in parallel
     # and the timeout applies to each module.
@@ -147,9 +166,8 @@ if(ARBTOK_BUILD_TESTS)
     list(TRANSFORM _parity_modules REPLACE "X\\(([a-z0-9_]+)\\)" "\\1")
     # The dialects records resolve tags that orthography2ipa matches against
     # its whole registry, so eight shard tests share them.
-    # A stride above 1 checks only every n-th record, for the slow sanitizer
-    # builds; the dialects records then run as one test at eight times the stride.
-    set(ARBTOK_PARITY_STRIDE 1 CACHE STRING "Check every n-th golden record")
+    # With a stride above 1, the dialects records run as one test at eight
+    # times the stride.
     set(_divergences --divergences ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/expected_divergences.tsv)
     set(_parity_tests)
     foreach(_module IN LISTS _parity_modules)
@@ -172,6 +190,12 @@ if(ARBTOK_BUILD_TESTS)
             list(APPEND _parity_tests parity_dialects_${_k})
         endforeach()
     endif()
+
+    add_executable(arbtok_exceptions tests/exceptions.cpp)
+    target_link_libraries(arbtok_exceptions PRIVATE arbtok)
+    add_test(NAME exceptions COMMAND arbtok_exceptions)
+    list(APPEND _parity_tests exceptions)
+
     foreach(_test IN LISTS _parity_tests)
         set_tests_properties(${_test} PROPERTIES ENVIRONMENT "ARBTOK_DATA_DIR=${CMAKE_CURRENT_SOURCE_DIR}/data")
     endforeach()

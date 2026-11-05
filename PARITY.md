@@ -4,7 +4,7 @@ arbtok.cpp gives the same bytes as one release of the Python package for each na
 
 ## Reference
 
-The goldens are dumped from these versions. Each golden file names them in its header. `tools/dump_goldens.py` pins the five packages and stops when an installed one has another version. The linguatag, langcodes and ovos-spec-tools versions are the ones that resolve with the first two under `uv --prerelease=allow`. linguatag and langcodes decide how a language tag resolves. Other versions can change the dialects records.
+The goldens are dumped from these versions. Each golden file names them in its header. `tools/dump_goldens.py` pins the packages of the table and stops when an installed one has another version. The linguatag, langcodes and ovos-spec-tools versions are the ones that resolve with the first two under `uv --prerelease=allow`. linguatag and langcodes decide how a language tag resolves. Other versions can change the dialects records. The number and date parsers give the spoken numbers, dates and times of the textnorm and util records, and `src/numbers` ports their Arabic parts at these versions.
 
 | Package | Version |
 | --- | --- |
@@ -13,11 +13,16 @@ The goldens are dumped from these versions. Each golden file names them in its h
 | langcodes | 3.5.1 |
 | linguatag | 0.1.5a1 |
 | ovos-spec-tools | 1.17.1a1 |
+| ovos-number-parser | 0.24.3a1 |
+| ovos-date-parser | 0.35.7a1 |
+| unicode-rbnf | 2.4.1 |
+| chronologia | 0.31.7a2 |
+| dateparser | 1.5.0 |
 | Python | 3.12.13 (Unicode 15.0.0) |
 
-The other packages that resolve with these under `uv --prerelease=allow` are: chronologia 0.31.7a2, combo_lock 0.3.1, dateparser 1.5.0, json_database 1.0.5a1, numpy 2.5.4, onnxruntime 1.31.1, ovos-config 3.9.0a2, ovos-date-parser 0.35.7a1, ovos-number-parser 0.24.3a1, ovos-utils 0.15.7a2, quebra-frases 0.3.8a1, regex 2026.9.29, unicode-rbnf 2.4.1, and their own dependencies.
+The other packages that resolve with these under `uv --prerelease=allow` are: combo_lock 0.3.1, json_database 1.0.5a1, numpy 2.5.4, onnxruntime 1.31.1, ovos-config 3.9.0a2, ovos-utils 0.15.7a2, quebra-frases 0.3.8a1, regex 2026.9.29, and their own dependencies.
 
-The gold sets come from the arbtok repository at commit `a95668cf097c5fcfb72b7ab75d7346579626e7a5`, whose `version.py` is 0.0.2a71. The other test inputs come from the `tests/` directory of the 0.0.2a71 sdist and from the data that the installed wheel bundles.
+The gold sets come from the arbtok repository at commit `a95668cf097c5fcfb72b7ab75d7346579626e7a5`, whose `version.py` is 0.0.2a71. The other test inputs come from the `tests/` directory of the 0.0.2a71 sdist and from the data that the installed wheel bundles. `tests/data/textnorm_calls.jsonl.gz` holds the 35138 distinct textnorm and util calls that the sdist test suite makes. `tools/goldens/record_calls.py` records them. The sdist has no `tests/voice_agent.py`, `scripts/` or `data/`, so the recording run takes them from the arbtok repository at the gold commit.
 
 orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned to `11da68ffe8101a3171061cf5eafdf3f376de48f8` on its `correct-port` branch. That commit holds parity with orthography2ipa 7.114.16a1 and linguatag 0.1.5a1.
 
@@ -28,19 +33,19 @@ orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned t
 arbtok has no command-line interface. Its only entry points are the three orthography2ipa plugins of `o2i_plugins` (normalize, rescore and sandhi), which phase 4 ports.
 
 <!-- inventory:begin -->
-362 public symbols, 170 ported.
+362 public symbols, 262 ported.
 
 The count covers 25 modules and the package itself: each module-level name, each public class member, and each name of the package `__all__`.
 
 | Python name | C++ name | Status |
 | --- | --- | --- |
-| `arbtok.AsrNorm` |  | phase 3 |
+| `arbtok.AsrNorm` | `arbtok::textnorm::AsrNorm` | ported |
 | `arbtok.Lect` | `arbtok::dialects::Lect` | ported |
-| `arbtok.TtsNorm` |  | phase 3 |
+| `arbtok.TtsNorm` | `arbtok::textnorm::TtsNorm` | ported |
 | `arbtok.__version__` | `arbtok::version::VERSION_STR` | ported |
 | `arbtok.is_arabic_lang` | `arbtok::textnorm::is_arabic_lang` | ported |
-| `arbtok.normalize_asr` |  | phase 3 |
-| `arbtok.normalize_for_tts` |  | phase 3 |
+| `arbtok.normalize_asr` | `arbtok::textnorm::normalize_asr` | ported |
+| `arbtok.normalize_for_tts` | `arbtok::textnorm::normalize_for_tts` | ported |
 | `arbtok.spec_for_lang` | `arbtok::dialects::spec_for_lang` | ported |
 | `arbtok.supported_lects` | `arbtok::dialects::supported_lects` | ported |
 | `arbtok.vocalize` |  | phase 2 |
@@ -225,87 +230,87 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `tashkeel.TashkeelError` | `arbtok::tashkeel::TashkeelError` | ported |
 | `tashkeel.TashkeelDiacritizer` |  | phase 2 |
 | `tashkeel.TashkeelDiacritizer.diacritize` |  | phase 2 |
-| `textnorm.AsrNorm` |  | phase 3 |
-| `textnorm.AsrNorm.nfc` |  | phase 3 |
-| `textnorm.AsrNorm.strip_event_markup` |  | phase 3 |
-| `textnorm.AsrNorm.strip_controls` |  | phase 3 |
-| `textnorm.AsrNorm.punctuation_before_marks` |  | phase 3 |
-| `textnorm.AsrNorm.strip_harakat` |  | phase 3 |
-| `textnorm.AsrNorm.strip_extended_marks` |  | phase 3 |
-| `textnorm.AsrNorm.strip_quranic_marks` |  | phase 3 |
-| `textnorm.AsrNorm.strip_tatweel` |  | phase 3 |
-| `textnorm.AsrNorm.split_term_proclitics` |  | phase 3 |
-| `textnorm.AsrNorm.fix_asr_errors` |  | phase 3 |
-| `textnorm.AsrNorm.unify_spoken_variants` |  | phase 3 |
-| `textnorm.AsrNorm.unify_dialect_spellings` |  | phase 3 |
-| `textnorm.AsrNorm.number_forms` |  | phase 3 |
-| `textnorm.AsrNorm.spoken_numbers_to_digits` |  | phase 3 |
-| `textnorm.AsrNorm.join_dictated_digits` |  | phase 3 |
-| `textnorm.AsrNorm.spell_codes` |  | phase 3 |
-| `textnorm.AsrNorm.unify_alef` |  | phase 3 |
-| `textnorm.AsrNorm.unify_ta_marbuta` |  | phase 3 |
-| `textnorm.AsrNorm.unify_alef_maqsura` |  | phase 3 |
-| `textnorm.AsrNorm.unify_hamza_carriers` |  | phase 3 |
-| `textnorm.AsrNorm.unify_loan_letters` |  | phase 3 |
-| `textnorm.AsrNorm.fold_digits` |  | phase 3 |
-| `textnorm.AsrNorm.fold_case` |  | phase 3 |
-| `textnorm.AsrNorm.arabic_block_only` |  | phase 3 |
-| `textnorm.AsrNorm.blank_punctuation` |  | phase 3 |
-| `textnorm.AsrNorm.drop_word_final_hamza` |  | phase 3 |
-| `textnorm.AsrNorm.join_clitics` |  | phase 3 |
-| `textnorm.AsrNorm.collapse_whitespace` |  | phase 3 |
-| `textnorm.AsrNorm.lexicon` |  | phase 3 |
-| `textnorm.AsrNorm.with_lexicon` |  | phase 3 |
-| `textnorm.AsrNorm.describe` |  | phase 3 |
-| `textnorm.IDENTIFIER_WORDS` |  | phase 3 |
-| `textnorm.ASR_NORM_VERSION` |  | phase 3 |
-| `textnorm.normalize_asr` |  | phase 3 |
-| `textnorm.TRUTH_CHECK` |  | phase 3 |
-| `textnorm.CER_STRIP` |  | phase 3 |
-| `textnorm.CER_NORM` |  | phase 3 |
-| `textnorm.CER_MARKS_FIRST` |  | phase 3 |
-| `textnorm.CER_NORM_MARKS_FIRST` |  | phase 3 |
-| `textnorm.INTELLIGIBILITY_GATE` |  | phase 3 |
-| `textnorm.spelled_codes` |  | phase 3 |
-| `textnorm.cldr_units` |  | phase 3 |
-| `textnorm.bundled_asr_lexicon` |  | phase 3 |
-| `textnorm.bundled_tts_lexicon` |  | phase 3 |
-| `textnorm.canonical_term_lexicon` |  | phase 3 |
-| `textnorm.CER_CANONICAL` |  | phase 3 |
-| `textnorm.ARAB_PHONE_REGIONS` |  | phase 3 |
+| `textnorm.AsrNorm` | `arbtok::textnorm::AsrNorm` | ported |
+| `textnorm.AsrNorm.nfc` | `arbtok::textnorm::AsrNorm::nfc` | ported |
+| `textnorm.AsrNorm.strip_event_markup` | `arbtok::textnorm::AsrNorm::strip_event_markup` | ported |
+| `textnorm.AsrNorm.strip_controls` | `arbtok::textnorm::AsrNorm::strip_controls` | ported |
+| `textnorm.AsrNorm.punctuation_before_marks` | `arbtok::textnorm::AsrNorm::punctuation_before_marks` | ported |
+| `textnorm.AsrNorm.strip_harakat` | `arbtok::textnorm::AsrNorm::strip_harakat` | ported |
+| `textnorm.AsrNorm.strip_extended_marks` | `arbtok::textnorm::AsrNorm::strip_extended_marks` | ported |
+| `textnorm.AsrNorm.strip_quranic_marks` | `arbtok::textnorm::AsrNorm::strip_quranic_marks` | ported |
+| `textnorm.AsrNorm.strip_tatweel` | `arbtok::textnorm::AsrNorm::strip_tatweel` | ported |
+| `textnorm.AsrNorm.split_term_proclitics` | `arbtok::textnorm::AsrNorm::split_term_proclitics` | ported |
+| `textnorm.AsrNorm.fix_asr_errors` | `arbtok::textnorm::AsrNorm::fix_asr_errors` | ported |
+| `textnorm.AsrNorm.unify_spoken_variants` | `arbtok::textnorm::AsrNorm::unify_spoken_variants` | ported |
+| `textnorm.AsrNorm.unify_dialect_spellings` | `arbtok::textnorm::AsrNorm::unify_dialect_spellings` | ported |
+| `textnorm.AsrNorm.number_forms` | `arbtok::textnorm::AsrNorm::number_forms` | ported |
+| `textnorm.AsrNorm.spoken_numbers_to_digits` | `arbtok::textnorm::AsrNorm::spoken_numbers_to_digits` | ported |
+| `textnorm.AsrNorm.join_dictated_digits` | `arbtok::textnorm::AsrNorm::join_dictated_digits` | ported |
+| `textnorm.AsrNorm.spell_codes` | `arbtok::textnorm::AsrNorm::spell_codes` | ported |
+| `textnorm.AsrNorm.unify_alef` | `arbtok::textnorm::AsrNorm::unify_alef` | ported |
+| `textnorm.AsrNorm.unify_ta_marbuta` | `arbtok::textnorm::AsrNorm::unify_ta_marbuta` | ported |
+| `textnorm.AsrNorm.unify_alef_maqsura` | `arbtok::textnorm::AsrNorm::unify_alef_maqsura` | ported |
+| `textnorm.AsrNorm.unify_hamza_carriers` | `arbtok::textnorm::AsrNorm::unify_hamza_carriers` | ported |
+| `textnorm.AsrNorm.unify_loan_letters` | `arbtok::textnorm::AsrNorm::unify_loan_letters` | ported |
+| `textnorm.AsrNorm.fold_digits` | `arbtok::textnorm::AsrNorm::fold_digits` | ported |
+| `textnorm.AsrNorm.fold_case` | `arbtok::textnorm::AsrNorm::fold_case` | ported |
+| `textnorm.AsrNorm.arabic_block_only` | `arbtok::textnorm::AsrNorm::arabic_block_only` | ported |
+| `textnorm.AsrNorm.blank_punctuation` | `arbtok::textnorm::AsrNorm::blank_punctuation` | ported |
+| `textnorm.AsrNorm.drop_word_final_hamza` | `arbtok::textnorm::AsrNorm::drop_word_final_hamza` | ported |
+| `textnorm.AsrNorm.join_clitics` | `arbtok::textnorm::AsrNorm::join_clitics` | ported |
+| `textnorm.AsrNorm.collapse_whitespace` | `arbtok::textnorm::AsrNorm::collapse_whitespace` | ported |
+| `textnorm.AsrNorm.lexicon` | `arbtok::textnorm::AsrNorm::lexicon` | ported |
+| `textnorm.AsrNorm.with_lexicon` | `arbtok::textnorm::AsrNorm::with_lexicon` | ported |
+| `textnorm.AsrNorm.describe` | `arbtok::textnorm::AsrNorm::describe` | ported |
+| `textnorm.IDENTIFIER_WORDS` | `arbtok::textnorm::IDENTIFIER_WORDS` | ported |
+| `textnorm.ASR_NORM_VERSION` | `arbtok::textnorm::ASR_NORM_VERSION` | ported |
+| `textnorm.normalize_asr` | `arbtok::textnorm::normalize_asr` | ported |
+| `textnorm.TRUTH_CHECK` | `arbtok::textnorm::TRUTH_CHECK` | ported |
+| `textnorm.CER_STRIP` | `arbtok::textnorm::CER_STRIP` | ported |
+| `textnorm.CER_NORM` | `arbtok::textnorm::CER_NORM` | ported |
+| `textnorm.CER_MARKS_FIRST` | `arbtok::textnorm::CER_MARKS_FIRST` | ported |
+| `textnorm.CER_NORM_MARKS_FIRST` | `arbtok::textnorm::CER_NORM_MARKS_FIRST` | ported |
+| `textnorm.INTELLIGIBILITY_GATE` | `arbtok::textnorm::INTELLIGIBILITY_GATE` | ported |
+| `textnorm.spelled_codes` | `arbtok::textnorm::spelled_codes` | ported |
+| `textnorm.cldr_units` | `arbtok::textnorm::cldr_units` | ported |
+| `textnorm.bundled_asr_lexicon` | `arbtok::textnorm::bundled_asr_lexicon` | ported |
+| `textnorm.bundled_tts_lexicon` | `arbtok::textnorm::bundled_tts_lexicon` | ported |
+| `textnorm.canonical_term_lexicon` | `arbtok::textnorm::canonical_term_lexicon` | ported |
+| `textnorm.CER_CANONICAL` | `arbtok::textnorm::CER_CANONICAL` | ported |
+| `textnorm.ARAB_PHONE_REGIONS` | `arbtok::textnorm::ARAB_PHONE_REGIONS` | ported |
 | `textnorm.ARABIC_LANGUAGE_CODES` | `arbtok::textnorm::ARABIC_LANGUAGE_CODES` | ported |
 | `textnorm.is_arabic_lang` | `arbtok::textnorm::is_arabic_lang` | ported |
-| `textnorm.TtsNorm` |  | phase 3 |
-| `textnorm.TtsNorm.strip_controls` |  | phase 3 |
-| `textnorm.TtsNorm.spell_out_plates` |  | phase 3 |
-| `textnorm.TtsNorm.spell_out_codes` |  | phase 3 |
-| `textnorm.TtsNorm.speak_percent` |  | phase 3 |
-| `textnorm.TtsNorm.keep_code_digits` |  | phase 3 |
-| `textnorm.TtsNorm.phone_shapes` |  | phase 3 |
-| `textnorm.TtsNorm.phone_regions` |  | phase 3 |
-| `textnorm.TtsNorm.long_digit_runs` |  | phase 3 |
-| `textnorm.TtsNorm.phone_prefixes` |  | phase 3 |
-| `textnorm.TtsNorm.identifier_words` |  | phase 3 |
-| `textnorm.TtsNorm.cardinal_numbers` |  | phase 3 |
-| `textnorm.TtsNorm.colloquial_clock` |  | phase 3 |
-| `textnorm.TtsNorm.colloquial_years` |  | phase 3 |
-| `textnorm.TtsNorm.colloquial_units` |  | phase 3 |
-| `textnorm.TtsNorm.leave_unspeakable_numbers` |  | phase 3 |
-| `textnorm.TtsNorm.oblique_numbers` |  | phase 3 |
-| `textnorm.TtsNorm.space_fused_hundreds` |  | phase 3 |
-| `textnorm.TtsNorm.dialect_numbers` |  | phase 3 |
-| `textnorm.TtsNorm.number_forms` |  | phase 3 |
-| `textnorm.TtsNorm.month_names` |  | phase 3 |
-| `textnorm.TtsNorm.spoken_forms` |  | phase 3 |
-| `textnorm.TtsNorm.canonical_unicode` |  | phase 3 |
-| `textnorm.TtsNorm.drop_false_starts` |  | phase 3 |
-| `textnorm.TtsNorm.plain_orthography` |  | phase 3 |
-| `textnorm.TtsNorm.lexicon` |  | phase 3 |
-| `textnorm.TtsNorm.with_lexicon` |  | phase 3 |
-| `textnorm.TtsNorm.with_number_forms` |  | phase 3 |
-| `textnorm.TtsNorm.describe` |  | phase 3 |
-| `textnorm.TTS_NORM_VERSION` |  | phase 3 |
-| `textnorm.normalize_for_tts` |  | phase 3 |
+| `textnorm.TtsNorm` | `arbtok::textnorm::TtsNorm` | ported |
+| `textnorm.TtsNorm.strip_controls` | `arbtok::textnorm::TtsNorm::strip_controls` | ported |
+| `textnorm.TtsNorm.spell_out_plates` | `arbtok::textnorm::TtsNorm::spell_out_plates` | ported |
+| `textnorm.TtsNorm.spell_out_codes` | `arbtok::textnorm::TtsNorm::spell_out_codes` | ported |
+| `textnorm.TtsNorm.speak_percent` | `arbtok::textnorm::TtsNorm::speak_percent` | ported |
+| `textnorm.TtsNorm.keep_code_digits` | `arbtok::textnorm::TtsNorm::keep_code_digits` | ported |
+| `textnorm.TtsNorm.phone_shapes` | `arbtok::textnorm::TtsNorm::phone_shapes` | ported |
+| `textnorm.TtsNorm.phone_regions` | `arbtok::textnorm::TtsNorm::phone_regions` | ported |
+| `textnorm.TtsNorm.long_digit_runs` | `arbtok::textnorm::TtsNorm::long_digit_runs` | ported |
+| `textnorm.TtsNorm.phone_prefixes` | `arbtok::textnorm::TtsNorm::phone_prefixes` | ported |
+| `textnorm.TtsNorm.identifier_words` | `arbtok::textnorm::TtsNorm::identifier_words` | ported |
+| `textnorm.TtsNorm.cardinal_numbers` | `arbtok::textnorm::TtsNorm::cardinal_numbers` | ported |
+| `textnorm.TtsNorm.colloquial_clock` | `arbtok::textnorm::TtsNorm::colloquial_clock` | ported |
+| `textnorm.TtsNorm.colloquial_years` | `arbtok::textnorm::TtsNorm::colloquial_years` | ported |
+| `textnorm.TtsNorm.colloquial_units` | `arbtok::textnorm::TtsNorm::colloquial_units` | ported |
+| `textnorm.TtsNorm.leave_unspeakable_numbers` | `arbtok::textnorm::TtsNorm::leave_unspeakable_numbers` | ported |
+| `textnorm.TtsNorm.oblique_numbers` | `arbtok::textnorm::TtsNorm::oblique_numbers` | ported |
+| `textnorm.TtsNorm.space_fused_hundreds` | `arbtok::textnorm::TtsNorm::space_fused_hundreds` | ported |
+| `textnorm.TtsNorm.dialect_numbers` | `arbtok::textnorm::TtsNorm::dialect_numbers` | ported |
+| `textnorm.TtsNorm.number_forms` | `arbtok::textnorm::TtsNorm::number_forms` | ported |
+| `textnorm.TtsNorm.month_names` | `arbtok::textnorm::TtsNorm::month_names` | ported |
+| `textnorm.TtsNorm.spoken_forms` | `arbtok::textnorm::TtsNorm::spoken_forms` | ported |
+| `textnorm.TtsNorm.canonical_unicode` | `arbtok::textnorm::TtsNorm::canonical_unicode` | ported |
+| `textnorm.TtsNorm.drop_false_starts` | `arbtok::textnorm::TtsNorm::drop_false_starts` | ported |
+| `textnorm.TtsNorm.plain_orthography` | `arbtok::textnorm::TtsNorm::plain_orthography` | ported |
+| `textnorm.TtsNorm.lexicon` | `arbtok::textnorm::TtsNorm::lexicon` | ported |
+| `textnorm.TtsNorm.with_lexicon` | `arbtok::textnorm::TtsNorm::with_lexicon` | ported |
+| `textnorm.TtsNorm.with_number_forms` | `arbtok::textnorm::TtsNorm::with_number_forms` | ported |
+| `textnorm.TtsNorm.describe` | `arbtok::textnorm::TtsNorm::describe` | ported |
+| `textnorm.TTS_NORM_VERSION` | `arbtok::textnorm::TTS_NORM_VERSION` | ported |
+| `textnorm.normalize_for_tts` | `arbtok::textnorm::normalize_for_tts` | ported |
 | `tokenizer.elide_silent_alif` | `arbtok::tokenizer::elide_silent_alif` | ported |
 | `tokenizer.normalize_unicode` | `arbtok::tokenizer::normalize_unicode` | ported |
 | `tokenizer.CharToken` | `arbtok::tokenizer::CharToken` | ported |
@@ -367,16 +372,16 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `translit.nativize` |  | phase 4 |
 | `translit.transliterate` |  | phase 4 |
 | `unicode_symbol2label.UNICODE_SYMBOL_TO_LABEL` | `arbtok::unicode_symbol2label::items(), get()` | ported |
-| `util.LOG` |  | phase 3 |
-| `util.match_lang` |  | phase 3 |
-| `util.CONTRACTIONS` |  | phase 3 |
-| `util.TITLES` |  | phase 3 |
-| `util.UNITS` |  | phase 3 |
-| `util.resolve_thousands_or_decimal` |  | phase 3 |
-| `util.pronounce_date` |  | phase 3 |
-| `util.pronounce_time` |  | phase 3 |
-| `util.is_fraction` |  | phase 3 |
-| `util.normalize` |  | phase 3 |
+| `util.LOG` |  | not ported: the Python logger; the port writes no log |
+| `util.match_lang` | `arbtok::util::match_lang` | ported |
+| `util.CONTRACTIONS` | `arbtok::util::CONTRACTIONS` | ported |
+| `util.TITLES` | `arbtok::util::TITLES` | ported |
+| `util.UNITS` | `arbtok::util::UNITS` | ported |
+| `util.resolve_thousands_or_decimal` | `arbtok::util::resolve_thousands_or_decimal` | ported |
+| `util.pronounce_date` | `arbtok::util::pronounce_date` | ported |
+| `util.pronounce_time` | `arbtok::util::pronounce_time` | ported |
+| `util.is_fraction` | `arbtok::util::is_fraction` | ported |
+| `util.normalize` | `arbtok::util::normalize` | ported |
 | `version.VERSION_MAJOR` | `arbtok::version::VERSION_MAJOR` | ported |
 | `version.VERSION_MINOR` | `arbtok::version::VERSION_MINOR` | ported |
 | `version.VERSION_BUILD` | `arbtok::version::VERSION_BUILD` | ported |
@@ -410,18 +415,22 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | lattice | constants 2, defers_to_cascade 5186, word_ipa 16616, word_lattice 2770, spec_word_exception 3832 | 28406 |
 | nisba | constants 1, restore_nisba 9581 | 9582 |
 | orthography | constants 5, allowed_classes 354, pinned_class 177, project_class 17374, source_marks 21567 | 39477 |
+| pyre | patterns 247, finditer 235638, fullmatch 43984, match 52344, search 19629, engine 4964 | 356806 |
 | sandhi | constants 1, apply_cross_word 30725, pausal 3465, has_article 394, is_bare_wasl_alif 394 | 34979 |
 | stress | first_segment_len 6077, stress_ipa 190275, stress_words 6078 | 202430 |
 | tashkeel | messages 54 | 54 |
-| textnorm | const 1, is_arabic_lang 20860 | 20861 |
+| textnorm | const 1, is_arabic_lang 20860, constants 11, tables 65, describe 227, validation 46, normalize_asr 189083, normalize_for_tts 132664, languages 55174 | 398131 |
 | tokenizer | normalize_unicode 7761, elide_silent_alif 7761, reorder_diacritics 7761, sentence 21624, words 5406 | 50313 |
 | unicode_symbol2label | items 4171, size 1, lookup 57 | 4229 |
+| util | constants 3, normalize 14125, match_lang 646, resolve_thousands_or_decimal 123, is_fraction 41, pronounce_date 3256, pronounce_time 216, languages 32186 | 50596 |
 | version | constants 5 | 5 |
 | waqf | constants 13, pausal 26936 | 26949 |
 
 The inputs are the string literals of the sdist tests, the gold sentences, the bundled lexicon words, the word exceptions of every Arabic spec, a set of Unicode probes, and generated grids. The docstring of each `tools/goldens/<module>.py` names the inputs of that module.
 
 The `o2i_calls` corpus records each call that `dialects` makes into orthography2ipa (`resolve`, `resolves_exactly`) and into langcodes (`closest_match`), with the arguments that arbtok passes. The C++ resolution layer is checked on the inputs it receives.
+
+The `pyre` records check the regex engine of the port against Python `re`. They hold each compiled pattern of `textnorm` and `util`, the patterns the two modules compile at call time, and the pattern strings they pass to `re` functions, with the result of `finditer`, `fullmatch`, `match` at a position and `search` up to an end position. Offsets are in code points. The `engine` corpus adds patterns that no module holds, for the constructs where a backtracking matcher can part from sre: `\b` and `\B` at the ends of a string and in an empty string, repeats of an item that can match empty, and the case pairs that sre adds to IGNORECASE beyond simple case folding.
 
 Each golden suite has a mutation control: one rule is broken in the C++, and the suite must fail. The table gives the mismatches that each mutation causes.
 
@@ -434,7 +443,22 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | waqf | phrase_final_only is inverted | 3564 of 26949 |
 | arabizi | the digit 9 does not mark Arabizi | 166 of 58401 |
 | unicode_symbol2label | items() gives the symbol as its own label | 4179 of 4229 |
-| textnorm | mey is not an Arabic language | 801 of 20861 |
+| textnorm | mey is not an Arabic language | 6480 of 398131 |
+| textnorm | ماية before 100, not before the thousands word, is the hundred | 17 of 398131 |
+| textnorm | ماية after و is the hundred after a value from 100, not from 1000 | 30 of 398131 |
+| textnorm | a spoken date refuses the last day of a month | 330 of 398131 |
+| util | match_lang refuses a language at distance 10 | 4 of 50596 |
+| pyre | `\D` matches the decimal digits | 953 of 356806 |
+| textnorm | a spoken date drops the 400-year rule of the leap year | 118 of 398131 |
+| textnorm, util | util takes every fourth year as a leap year | 172 of 398131, 8 of 50596 |
+| textnorm, numbers_dates_ar | no text names a holiday | 312 of 398131, 4 of 55038 |
+| pyre | the case pairs that sre adds to IGNORECASE are off | 190 of 356806 |
+| pyre | `\B` matches in an empty string | 63 of 356806 |
+| pyre | a repeat item past its minimum takes the position where the previous item started | 57 of 356806 |
+| util, exceptions | util's `except Exception` lets a `NotImplementedError` of the reference libraries through | 1749 of 50596, 7 of 16 calls |
+| textnorm, exceptions | `leave_unspeakable_numbers` lets a `NotImplementedError` of the reference libraries through | 1334 of 398131, 2 of 16 calls |
+| numbers_dispatch, exceptions | a language that a module of another language serves raises `NotImplementedError`, not `NotPortedError` | 3733 of 20834, 2 of 16 calls |
+| numbers_dispatch | `extract_datetime` sends a code such as `ara` or `ar_SA` to another module | 52 of 20834 |
 | dialects | `split("-x-")[-1]` keeps the hyphen | 2656 of 147093, in each of the 8 shards |
 | stress | a negative proclitic_onset cuts one code point late | 6742 of 202430 |
 | sandhi | the pausal form applies when pausal is False | 310 of 34979 |
@@ -451,6 +475,9 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 - The goldens write a Python `set` sorted, because its iteration order follows the hash seed. A `dict` keeps its insertion order. A dict whose order comes from a spec file is written as sorted items.
 - A float is written in Python `repr` form, and the build sets `-ffp-contract=off`, so that a fused multiply-add cannot change a result.
 - `warnings.warn` becomes a call to the handler that `arbtok::set_warning_handler` installs. With no handler, a warning is dropped.
+- `tools/gen_textnorm_tables.py` writes each module-level pattern, string and table of `textnorm` and `util` as the imported module holds it. A name that the module defines twice, as `_MONTH_NAMES`, has the value of its second definition. The patterns run on `src/pyre.cpp`. `src/pyre.hpp` states the syntax it reads and the sre behaviour it keeps.
+- A `functools.lru_cache` of `textnorm` becomes a cache per thread. A cache changes only the speed.
+- An `except Exception` of `textnorm` or `util` catches the `arbtok::Error` classes of the port. Those include the `NotImplementedError("Unsupported language: ...")` that the number and date layer raises where the reference libraries reject a language, as for ur, mey-MR, ar_SA, xx and ara, so the port gives the result that Python's handler gives. Where the reference reaches code that the port does not hold, the port raises `arbtok::NotPortedError`. That is the module of a language other than Arabic, dateparser, chronologia for a holiday text outside `data/numbers/holidays_ar.json`, or the unicode-rbnf rules. `NotPortedError` stands for no Python class and derives from no `arbtok::Error`, so no `except Exception` handler of the port catches it. The gap stays visible and does not become a different result.
 
 ## Data loading
 
@@ -490,3 +517,7 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 
 - No golden input makes `spec_for_lang` issue a `UserWarning`, so the warning path of `dialects` is not checked against Python. The C++ issues the warning through the handler in the same case as Python.
 - The sanitizer build checks every 20th record of each suite and every 160th dialects record.
+- The number words, ordinals, dates and times of `src/numbers` are the Arabic ones. A `textnorm` or `util` call that reaches code the port does not hold raises `arbtok::NotPortedError`. The dumper leaves out the 19 recorded calls of that kind (1 ASR call, 18 TTS calls), and it keeps a recorded `util` call only when its language is Arabic or its text has no digit and no word that `float()` reads. The `languages` corpora leave out each record whose reference call reached such code, as `tools/goldens/routes.py` sees it from the code that ran. `src/numbers/PARITY.md` describes the dispatch golden, which checks the route of each entry point for 1894 language tags.
+- The `pyre` records of a call-time pattern give the C++ the pattern text from the golden. They check the engine on that pattern, not that the C++ builds the same text. The `textnorm` and `util` records check the built patterns end to end.
+- The 9351 distinct texts of the recorded calls run only with the config and the language of their call. A TTS config that turns on a rule of `_ARABIC_ONLY` runs with "en" on 20 texts.
+- `util.LOG` is not ported. The Python logs a line where a date or a time does not parse. The port gives the same result and writes no log.
