@@ -1,7 +1,9 @@
 // The part of ovos-date-parser that arbtok calls: Arabic clock times and dates
-// spoken in words, and the Arabic dates and times read out of a text. Only the
-// codes the reference sends to its Arabic module are ported; every other code
-// raises NotImplementedError.
+// spoken in words, and the Arabic dates and times read out of a text. A code the
+// reference sends to its Arabic module is ported. A code it reads with the
+// module or the formats of another language, or with dateparser, raises
+// NotPortedError. A code it rejects raises its NotImplementedError("Unsupported
+// language: ...").
 #pragma once
 
 #include <optional>
@@ -41,7 +43,7 @@ struct Extracted {
 // extract_datetime(text, lang, anchorDate) with no default_time. nullopt where
 // the reference returns None. A text that names a holiday is answered from the
 // reference answers for lang "ar" at the anchor 2000-01-01, the call arbtok
-// makes; any other holiday text raises NotImplementedError.
+// makes; any other holiday text raises NotPortedError.
 std::optional<Extracted> extract_datetime(std::string_view text, std::string_view lang, const DateTime& anchor);
 
 // The ovos-date-parser release this port holds parity with.

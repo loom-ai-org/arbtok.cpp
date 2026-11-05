@@ -4,9 +4,11 @@
 // that is left.
 //
 // The spoken forms come from the ported number and date calls, which read
-// Arabic only. For another language, a call that reaches a spoken form raises
-// NotImplementedError; the contractions, the titles and the steps that only
-// move text work for every language.
+// Arabic only. Where the reference speaks a form with the module of another
+// language, the call raises NotPortedError. Where the reference rejects the
+// language, the call gives what the reference gives, which is mostly the text
+// as written. The contractions, the titles and the steps that only move text
+// work for every language.
 #pragma once
 
 #include <optional>

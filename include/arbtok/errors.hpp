@@ -42,6 +42,13 @@ struct NotImplementedError : Error {
     explicit NotImplementedError(const std::string& message) : Error("NotImplementedError", message) {}
 };
 
+// A path the Python package computes and the port does not hold, such as a
+// number spoken in a language other than Arabic. It stands for no Python
+// exception, so it does not derive from Error.
+struct NotPortedError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
 // The directory that holds the data files. The first of these that is set
 // wins: set_data_dir(), the ARBTOK_DATA_DIR environment variable, the data
 // directory of the install that holds the library (found from the path of the

@@ -147,8 +147,8 @@ std::string normalize_asr(const std::string& text, const AsrNorm& config = AsrNo
 
 // Prepare text to be spoken. ValueError when a rule that speaks Arabic is on
 // and lang is not Arabic. The spoken forms of numbers, dates and times are
-// ported for Arabic only: for another lang, a call that reaches them raises
-// NotImplementedError.
+// ported for Arabic only: where the reference speaks them with the module of
+// another language, the call raises NotPortedError.
 std::string normalize_for_tts(const std::string& text, const std::string& lang = "ar",
                               const TtsNorm& config = TtsNorm());
 

@@ -33,6 +33,14 @@ if(NOT TARGET orthography2ipa::orthography2ipa)
     add_library(orthography2ipa::orthography2ipa ALIAS orthography2ipa)
 endif()
 
+# The test registry is enabled before src/numbers, so that its parity tests
+# are registered with the others. A stride above 1 checks only every n-th
+# golden record, for the slow sanitizer builds.
+if(ARBTOK_BUILD_TESTS)
+    enable_testing()
+    set(ARBTOK_PARITY_STRIDE 1 CACHE STRING "Check every n-th golden record")
+endif()
+
 # The Arabic parts of ovos-number-parser, ovos-date-parser and unicode-rbnf
 # that textnorm and util call. Their tables are compiled into the library.
 add_subdirectory(src/numbers)
@@ -122,7 +130,6 @@ install(FILES
 
 # ── Tests ────────────────────────────────────────────────────────────────────
 if(ARBTOK_BUILD_TESTS)
-    enable_testing()
     find_package(ZLIB REQUIRED)
     find_package(Threads REQUIRED)
 
@@ -159,9 +166,8 @@ if(ARBTOK_BUILD_TESTS)
     list(TRANSFORM _parity_modules REPLACE "X\\(([a-z0-9_]+)\\)" "\\1")
     # The dialects records resolve tags that orthography2ipa matches against
     # its whole registry, so eight shard tests share them.
-    # A stride above 1 checks only every n-th record, for the slow sanitizer
-    # builds; the dialects records then run as one test at eight times the stride.
-    set(ARBTOK_PARITY_STRIDE 1 CACHE STRING "Check every n-th golden record")
+    # With a stride above 1, the dialects records run as one test at eight
+    # times the stride.
     set(_divergences --divergences ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/expected_divergences.tsv)
     set(_parity_tests)
     foreach(_module IN LISTS _parity_modules)

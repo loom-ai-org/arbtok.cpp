@@ -695,10 +695,8 @@ U32 speak_numbers(U32 text, Speaker& sp) {
     auto speak = [&](const U32& written, const U32& number, bool feminine_noun) -> U32 {
         try {
             return sp.cardinal(number, feminine_noun);
-        } catch (const Error& e) {
-            // Python has no NotImplementedError on this path: the port raises it only
-            // for spoken forms it does not have, and those are not unspeakable numbers.
-            if (e.python_type() == "NotImplementedError" || !sp.config.leave_unspeakable_numbers) throw;
+        } catch (const Error&) {
+            if (!sp.config.leave_unspeakable_numbers) throw;
             return written;
         }
     };

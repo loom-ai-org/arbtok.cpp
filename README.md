@@ -2,7 +2,7 @@
 
 A C++17 port of [arbtok](https://github.com/TigreGotico/arbtok), rule-based Arabic text-to-IPA with tashkeel diacritization. For each function it ports, the port gives the same bytes as the Python package. `PARITY.md` names the reference versions, lists the whole public surface with the status of each name, and records the gaps.
 
-The port holds the modules that need no model: constants, orthography, tashkeel (its error class), nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version, and the text normalization of textnorm and util. textnorm and util speak and read numbers, dates and times in Arabic only. For another language, such a call raises `arbtok::NotImplementedError`. The diacritizer, the lexicons and the plugins are not ported.
+The port holds the modules that need no model: constants, orthography, tashkeel (its error class), nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version, and the text normalization of textnorm and util. textnorm and util speak and read numbers, dates and times in Arabic only. Where the Python package speaks such a form with the module of another language, the call raises `arbtok::NotPortedError`. Where the reference libraries reject a language, the call gives the Python result. The diacritizer, the lexicons and the plugins are not ported.
 
 ## Build
 

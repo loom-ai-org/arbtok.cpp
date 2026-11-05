@@ -1,15 +1,24 @@
 // Python's re module for str patterns, as far as textnorm and util use it: a
-// backtracking matcher over code points with the semantics of CPython 3.12's
-// sre. \d is str.isdecimal(), \w is str.isalnum() or "_", \s is str.isspace(),
-// IGNORECASE compares the simple lowercase with re's extra case pairs, $
-// matches before a final "\n", a look-behind is fixed width, and an empty
-// match next to the previous match is allowed in finditer, sub and split.
+// backtracking matcher over code points. For the syntax below and a pattern
+// that CPython 3.12 compiles, a call gives the spans that CPython 3.12's sre
+// gives. \d is str.isdecimal(), \w is str.isalnum() or "_", \s is
+// str.isspace(), IGNORECASE compares the simple lowercase with re's extra case
+// pairs, $ matches before a final "\n", a look-behind is fixed width, and an
+// empty match next to the previous match is allowed in finditer, sub and split.
+// As in sre, \b and \B fail when the string up to endpos is empty, and a
+// repeat does not try an item past its minimum at the position where the
+// previous item past its minimum started. The goldens of tests/goldens/pyre
+// hold every module pattern and the engine patterns of tools/goldens/pyre.py.
 //
 // Supported syntax: literals and escapes, classes, . ^ $ \A \Z \b \B, groups
 // (capturing, (?:...), (?P<name>...), (?P=name), \N), look-ahead and
 // look-behind, (?(group)yes|no), (?i:...), a leading (?i) or (?s), and the
 // quantifiers * + ? {m,n} with their lazy forms. Any other syntax raises
-// pyre::error, as an unsupported pattern must not match silently.
+// pyre::error, as an unsupported pattern must not match silently. The
+// compiler does not check all that sre checks: a pattern with a reference to a
+// group that is still open, or to a group defined later, compiles here, and
+// sre raises re.error for it. The patterns that the port compiles at call time
+// escape their data, so no such pattern reaches the compiler.
 #pragma once
 
 #include <cstddef>

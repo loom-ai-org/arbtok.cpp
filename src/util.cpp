@@ -29,14 +29,12 @@ Tables tables(const textnorm::py::LangTable* begin, const textnorm::py::LangTabl
 }
 
 // Runs fn as Python runs a body under `except Exception`: an arbtok::Error
-// gives nullopt. NotImplementedError still propagates, since it marks a path
-// the port does not hold and must not read as the reference's fallback.
+// gives nullopt. NotPortedError, which stands for no Python exception, passes.
 template <class F>
 optional<U32> attempt(F&& fn) {
     try {
         return fn();
-    } catch (const Error& e) {
-        if (e.python_type() == "NotImplementedError") throw;
+    } catch (const Error&) {
         return nullopt;
     }
 }
@@ -409,8 +407,7 @@ std::string normalize(const std::string& text, const std::string& lang) {
     const std::string date_format = s8(lower(u(full_lang))) == "en-us" ? "MDY" : "DMY";
     try {
         dialog = normalize_dates_and_times(dialog, full_lang, date_format);
-    } catch (const Error& e) {
-        if (e.python_type() == "NotImplementedError") throw;
+    } catch (const Error&) {
     }
     dialog = normalize_word_hyphen_digit(dialog);
     dialog = normalize_units(dialog, full_lang);

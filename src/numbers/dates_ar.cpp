@@ -1,4 +1,6 @@
 // ovos_date_parser.dates_ar and the parts of ovos_date_parser that route to it.
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <functional>
 #include <map>
@@ -275,7 +277,7 @@ bool pattern_match(std::string_view pattern, std::string_view s) {
             atom.test = [lo, hi](char x) { return x >= lo && x <= hi; };
             p += 5;
         } else if (c == '\\' || c == '[' || c == '(' || c == '.' || c == '*' || c == '+' || c == '|') {
-            throw NotImplementedError("date_time.json pattern not ported: " + std::string(pattern));
+            throw NotPortedError("date_time.json pattern not ported: " + std::string(pattern));
         } else {
             atom.test = [c](char x) { return x == c; };
             ++p;
@@ -775,7 +777,7 @@ bool names_a_holiday(U32View text) {
         } else if (text::is_space(c)) {
             folded.push_back(c);
         } else {
-            throw NotImplementedError("holiday folding outside ASCII and the Arabic block is not ported");
+            throw NotPortedError("holiday folding outside ASCII and the Arabic block is not ported");
         }
     }
     // _loosen: re.findall(r"\w+(?:'\w+)?"), each word without a final 's or s
@@ -824,8 +826,33 @@ std::string base_lang(std::string_view lang) {
     return out;
 }
 
+bool starts_any(std::string_view s, std::initializer_list<std::string_view> prefixes) {
+    for (auto p : prefixes) {
+        if (starts(s, p)) return true;
+    }
+    return false;
+}
+
+// A code the reference reads with the module of another language, or with
+// dateparser, which the port does not hold.
 [[noreturn]] void not_ported(std::string_view lang) {
-    throw NotImplementedError("language not ported: '" + std::string(lang) + "'");
+    throw NotPortedError("language not ported: '" + std::string(lang) + "'");
+}
+
+// The prefixes nice_time has a module for, other than "ar".
+bool nice_time_module(std::string_view lang) {
+    return starts_any(lang, {"ast", "an", "az", "gl", "el", "he", "oc", "ro", "ca", "cs", "sk", "hr", "bg", "da",
+                             "de", "en", "es", "et", "eu", "fa", "fi", "fr", "hu", "it", "kab", "fy", "nl", "nn",
+                             "nb", "no", "pl", "pt", "ru", "sv", "sl", "uk", "ms", "id", "tr"});
+}
+
+// The codes whose ovos_date_parser/res/<code>/date_time.json holds the formats
+// of nice_date, and "no", which reads those of nb.
+bool has_date_formats(std::string_view lang) {
+    static const std::array<std::string_view, 29> codes = {
+        "ar", "az", "bg", "ca", "cs", "da", "de", "en", "et", "eu", "fa", "fi", "fr", "hr", "hu",
+        "it", "kab", "nb", "nl", "nn", "pl", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "no"};
+    return std::find(codes.begin(), codes.end(), lang) != codes.end();
 }
 
 }  // namespace
@@ -843,12 +870,22 @@ std::string isoformat(const DateTime& dt) {
 }
 
 std::string nice_time(const DateTime& dt, std::string_view lang, bool speech, bool use_24hour, bool use_ampm) {
-    if (!starts(lang, "ar")) not_ported(lang);
+    if (!starts(lang, "ar")) {
+        if (nice_time_module(lang)) not_ported(lang);
+        throw NotImplementedError("Unsupported language: " + std::string(lang));
+    }
     return text::s8(nice_time_ar(dt, speech, use_24hour, use_ampm));
 }
 
 std::string nice_date(const DateTime& dt, std::string_view lang) {
-    if (base_lang(lang) != "ar") not_ported(lang);
+    // lang.lower().split("-")[0], then the modules, then the formats of res/<lang>
+    const std::string base = base_lang(lang);
+    if (base != "ar") {
+        if (starts_any(base, {"pt", "es", "gl", "el", "he", "oc", "ro", "ast", "an", "fy"}) || has_date_formats(base)) {
+            not_ported(lang);
+        }
+        throw NotImplementedError("Unsupported language: " + base);
+    }
     const auto& t = tables::date_time_ar();
     const int wd = weekday(moment(dt));
     return format_fields(t.date_full, {
@@ -860,13 +897,15 @@ std::string nice_date(const DateTime& dt, std::string_view lang) {
 }
 
 std::optional<Extracted> extract_datetime(std::string_view text, std::string_view lang, const DateTime& anchor) {
-    if (!starts(lang, "ar") || base_lang(lang) != "ar") not_ported(lang);
+    // _extract_datetime_engine reads every code that starts with "ar" with
+    // extract_datetime_ar, and any other code with a module or with dateparser.
+    if (!starts(lang, "ar")) not_ported(lang);
     const U32 written = text::u(text);
     if (!written.empty() && names_a_holiday(written)) {
         const auto& answers = tables::holidays_ar().answers;
         const auto it = answers.find(std::string(text));
         if (lang != "ar" || !(anchor == DateTime{2000, 1, 1}) || it == answers.end()) {
-            throw NotImplementedError("the holiday layer is ported only for the texts arbtok sends it");
+            throw NotPortedError("the holiday layer is ported only for the texts arbtok sends it");
         }
         if (!it->second) return std::nullopt;
         const std::string& iso = it->second->first;

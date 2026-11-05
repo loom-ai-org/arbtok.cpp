@@ -13,6 +13,7 @@ call it gives the same bytes as the reference, and the same Python exception cla
 | unicode-rbnf | 2.4.1 |
 | orthography2ipa | 7.114.16a1 |
 | chronologia | 0.31.7a2 |
+| dateparser | 1.5.0 |
 | Python | 3.12.13 |
 
 Build the reference interpreter with uv:
@@ -20,7 +21,9 @@ Build the reference interpreter with uv:
 ```sh
 unset VIRTUAL_ENV
 uv venv --python 3.12 venv
-uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orthography2ipa==7.114.16a1
+uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orthography2ipa==7.114.16a1 \
+    linguatag==0.1.5a1 langcodes==3.5.1 ovos-spec-tools==1.17.1a1 ovos-number-parser==0.24.3a1 \
+    ovos-date-parser==0.35.7a1 unicode-rbnf==2.4.1 chronologia==0.31.7a2 dateparser==1.5.0
 ```
 
 ## Ported functions
@@ -38,20 +41,27 @@ uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orth
 | `ovos_date_parser::extract_datetime` | `ovos_date_parser.extract_datetime` |
 | `unicode_rbnf::RbnfEngine` | `unicode_rbnf.RbnfEngine.for_language`, `format_number` |
 
-The number functions cover each language code that `numbers_ar.resolve_ar_lang` names an Arabic variety for.
-`nice_time` covers the codes that start with `ar`; `nice_date` and `extract_datetime` cover the codes whose
-primary subtag is `ar`. Every other code raises NotImplementedError. For `numbers_to_digits`, a code that no
-module of the reference reads numbers for gives the text with its whitespace collapsed, as the reference does.
+Each entry point routes a language code as the reference does, test by test in the reference order. The Arabic
+code reads the codes the reference sends to its Arabic module: for the number functions each code that
+`numbers_ar.resolve_ar_lang` names an Arabic variety for, for `nice_time` and `extract_datetime` the codes that
+start with `ar`, and for `nice_date` the codes whose lower-case primary subtag is `ar`. A code that the reference
+reads with the module of another language, with the date formats of another language, with the unicode-rbnf
+rules of a language or with dateparser raises `NotPortedError`. That class stands for no Python exception, so
+an `except Exception` of arbtok does not catch it. A code that the reference rejects gives what the reference
+gives: `NotImplementedError("Unsupported language: ...")` from the speakers, `extract_number`, `nice_time` and
+`nice_date`, and from `numbers_to_digits` the text with its whitespace collapsed.
 
 ## Not ported
 
 - chronologia, which `extract_datetime` asks about a text that names a holiday. `data/numbers/holidays_ar.json`
   holds the reference answer for each holiday text arbtok sends: a holiday word alone, and
   `الساعة <hour> <word>`, for lang `ar` at the anchor 2000-01-01. Any other text that names a holiday raises
-  NotImplementedError.
+  `NotPortedError`.
 - The unicode-rbnf rules. arbtok asks for a cardinal only for a word that holds a digit that is not a decimal
-  digit, which `decimal.Decimal` rejects with InvalidOperation. `format_number` raises InvalidOperation for such
-  a text and NotImplementedError for a text that `Decimal` accepts.
+  digit, which `decimal.Decimal` rejects with InvalidOperation. For `ar`, `format_number` raises
+  InvalidOperation for such a text and `NotPortedError` for a text that `Decimal` accepts. For another language
+  it raises `NotPortedError`. Where the rules of a language have no ordinal rule set, the reference
+  `pronounce_ordinal` raises NotImplementedError and the port raises `NotPortedError`.
 - The other languages of the three libraries.
 
 ## Data
@@ -64,5 +74,27 @@ interpreter, written by `data/numbers/gen_unicode_tables.py`. The library compil
 
 `tools/goldens/numbers_ar.py` and `tools/goldens/dates_ar.py` write `tests/goldens/numbers_ar.jsonl.gz` and
 `tests/goldens/numbers_dates_ar.jsonl.gz` from the reference. Their inputs are the calls arbtok's own test suite
-makes into the libraries, recorded in `tests/goldens/numbers_calls.jsonl.gz`, and generated grids. The ctest
-targets `numbers_ar_parity` and `numbers_dates_ar_parity` compare the port with them.
+makes into the libraries, recorded in `tests/goldens/numbers_calls.jsonl.gz`, and generated grids.
+`tools/goldens/numbers_dispatch.py` writes `tests/goldens/numbers_dispatch.jsonl.gz`: 11 calls of the entry
+points for each of 1894 language tags, each with the route that `tools/goldens/routes.py` saw the reference
+take. A record of route `arabic` or `rejected` holds the reference result, and a record of route `module` must
+raise `NotPortedError` in the port.
+
+The first line of each file is a header with the reference versions and the record count of each corpus.
+`numbers_parity` fails a file that has no header, and a file that holds a different number of records than its
+header gives, so an empty or a truncated golden fails. With `ARBTOK_PARITY_STRIDE` above 1, as in the sanitizer
+build, it checks every n-th record and still counts every record of the file.
+
+| Golden | Records | ctest target |
+| --- | --- | --- |
+| `numbers_ar.jsonl.gz` | 184107 | `numbers_ar_parity` |
+| `numbers_dates_ar.jsonl.gz` | 55038 | `numbers_dates_ar_parity` |
+| `numbers_dispatch.jsonl.gz` | 20834: arabic 9722, module 6644, rejected 4468 | `numbers_dispatch_parity` |
+
+Each golden has a mutation control.
+
+| Mutation | Result |
+| --- | --- |
+| `names_a_holiday` returns false (`dates_ar.cpp`) | numbers_dates_ar: 4 of 55038; textnorm: 312 of 398131 |
+| `not_ported` of the number functions raises `NotImplementedError` | numbers_dispatch: 3733 of 20834; exceptions: 2 of 16 calls |
+| `extract_datetime` sends a code such as `ara` or `arz` to another module, where the reference reads every code that starts with `ar` | numbers_dispatch: 52 of 20834 |

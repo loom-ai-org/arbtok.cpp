@@ -39,4 +39,12 @@ struct InvalidOperation : Error {
     explicit InvalidOperation(const std::string& message) : Error("InvalidOperation", message) {}
 };
 
+// A path the reference computes and the port does not hold: a language whose
+// module is not ported, or a rule that is not. It stands for no Python
+// exception, so it does not derive from Error, and a handler that stands for
+// `except Exception` lets it through.
+struct NotPortedError : std::runtime_error {
+    using std::runtime_error::runtime_error;
+};
+
 }  // namespace arbtok::numbers

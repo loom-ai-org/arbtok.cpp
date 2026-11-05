@@ -44,7 +44,12 @@ if(ARBTOK_BUILD_TESTS)
     target_include_directories(numbers_parity PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
     target_link_libraries(numbers_parity PRIVATE arbtok_numbers ZLIB::ZLIB)
     add_test(NAME numbers_ar_parity
-             COMMAND numbers_parity "${_numbers_root}/tests/goldens/numbers_ar.jsonl.gz")
+             COMMAND numbers_parity --stride ${ARBTOK_PARITY_STRIDE}
+                     "${_numbers_root}/tests/goldens/numbers_ar.jsonl.gz")
     add_test(NAME numbers_dates_ar_parity
-             COMMAND numbers_parity "${_numbers_root}/tests/goldens/numbers_dates_ar.jsonl.gz")
+             COMMAND numbers_parity --stride ${ARBTOK_PARITY_STRIDE}
+                     "${_numbers_root}/tests/goldens/numbers_dates_ar.jsonl.gz")
+    add_test(NAME numbers_dispatch_parity
+             COMMAND numbers_parity --stride ${ARBTOK_PARITY_STRIDE}
+                     "${_numbers_root}/tests/goldens/numbers_dispatch.jsonl.gz")
 endif()

@@ -11,7 +11,11 @@ The inputs are:
   words only, so no such call reaches a number word of another language;
 - match_lang over a grid of tags, resolve_thousands_or_decimal and is_fraction over
   a grid of words, pronounce_date over a grid of dates and pronounce_time over a
-  grid of "<h>h<mm>" strings, with Arabic codes.
+  grid of "<h>h<mm>" strings, with Arabic codes;
+- normalize over the generated and calendar texts, pronounce_date over the date grid and
+  pronounce_time over the time grid, with the codes of textnorm's LANGUAGES. A
+  record is kept unless the reference reached code that the port does not hold
+  (tools/goldens/routes.py), and the corpus states how many it leaves out.
 """
 import datetime
 import multiprocessing
@@ -20,6 +24,7 @@ import random
 from arbtok import util
 
 from . import common
+from . import routes
 from . import textnorm as tn_goldens
 
 FOREIGN = ("en", "en-US", "pt", "fr", "de", "es", "xx")
@@ -49,7 +54,7 @@ def record(item):
 def normalize_items():
     texts = tn_goldens.all_texts()
     generated = tn_goldens.generated_texts()
-    foreign_pool = sorted(t for t in texts if numberless(t))
+    foreign_pool = sorted(t for t in tn_goldens.sample_pool() if numberless(t))
     rng = random.Random(SEED)
     foreign = sorted(rng.sample(foreign_pool, min(FOREIGN_SAMPLE, len(foreign_pool))))
     foreign = common.unique(foreign + [t for t in generated if numberless(t)])
@@ -106,6 +111,28 @@ def run(fn, items):
         return pool.map(fn, items, chunksize=64)
 
 
+def language_record(item):
+    """The record of item when the reference reached only code the port holds, else None."""
+    kind, value, lang = item
+    if kind == "normalize":
+        make = lambda: record((value, lang))  # noqa: E731
+    elif kind == "pronounce_date":
+        make = lambda: ["pronounce_date", list(value), lang,  # noqa: E731
+                        common.call(util.pronounce_date, datetime.date(*value), lang)]
+    else:
+        make = lambda: ["pronounce_time", value, lang, common.call(util.pronounce_time, value, lang)]  # noqa: E731
+    route, out = routes.route_of(make)
+    return None if route == routes.MODULE else out
+
+
+def language_items():
+    langs = tn_goldens.LANGUAGES
+    return ([("normalize", t, lang) for lang in langs
+             for t in tn_goldens.generated_texts() + tn_goldens.calendar_texts()]
+            + [("pronounce_date", d, lang) for lang in langs for d in date_grid()]
+            + [("pronounce_time", t, lang) for lang in langs for t in TIMES])
+
+
 def corpora():
     tables = [["const", "CONTRACTIONS", [[lang, pairs(d)] for lang, d in util.CONTRACTIONS.items()]],
               ["const", "TITLES", [[lang, pairs(d)] for lang, d in util.TITLES.items()]],
@@ -127,4 +154,5 @@ def corpora():
           for d in dates for lang in langs]),
         ("pronounce_time", len(TIMES) * len(langs),
          [["pronounce_time", t, lang, common.call(util.pronounce_time, t, lang)] for t in TIMES for lang in langs]),
+        tn_goldens.kept("languages", language_items(), language_record),
     ]

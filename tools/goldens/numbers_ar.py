@@ -28,8 +28,13 @@ import math
 import multiprocessing
 import os
 import random
+import pathlib
 import sys
 import unicodedata
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from goldens import common  # noqa: E402
 
 LANGS_WITH_TABLES = ["ar", "acw", "afb", "ars", "arz"]
 GENDERS = ["MASCULINE", "FEMININE"]
@@ -473,6 +478,7 @@ def build(calls_path, out_path, jobs):
     n_in, recorded, skipped = from_recorded(calls_path)
     grids = grid_tasks()
     blocks = block_tasks()
+    n_tasks = len(recorded) + len(grids) + len(blocks)
     with multiprocessing.Pool(jobs) as pool:
         computed = pool.map(_call_star, recorded + grids, chunksize=200)
         block_records = pool.map(_block_star, blocks, chunksize=4)
@@ -485,18 +491,16 @@ def build(calls_path, out_path, jobs):
             continue
         records.append(r)
     records += block_records
-    lines = list(dict.fromkeys(dumps(r) for r in records))
-    with gzip.open(out_path, "wt", encoding="utf-8", compresslevel=9) as f:
-        for line in lines:
-            f.write(line + "\n")
+    records, duplicates = common.deduplicated(records)
     n_skipped = sum(skipped.values())
     print(f"recorded calls in: {n_in}; out: {len(recorded)} records + {n_skipped} not covered by the port "
           f"({n_in - len(recorded) - n_skipped} other calls)", file=sys.stderr)
     for (name, lang), count in sorted(skipped.items()):
         print(f"  not covered: {name} lang={lang!r}: {count}", file=sys.stderr)
-    print(f"grid records in: {len(grids)}; blocks in: {len(blocks)}; dropped as not routed to Arabic: {dropped}; "
-          f"records out: {len(records)}; "
-          f"unique lines written: {len(lines)}", file=sys.stderr)
+    print(f"tasks in: {n_tasks} ({len(recorded)} recorded, {len(grids)} grid, {len(blocks)} blocks); "
+          f"dropped as not routed to Arabic: {dropped}; repeats: {duplicates}; records out: {len(records)}",
+          file=sys.stderr)
+    common.write(out_path, "numbers_ar", [("numbers", n_tasks - dropped - duplicates, records)])
 
 
 def main():

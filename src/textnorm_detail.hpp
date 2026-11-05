@@ -197,6 +197,8 @@ auto bridged(F&& fn) -> decltype(fn()) {
         throw OverflowError(e.what());
     } catch (const numbers::NotImplementedError& e) {
         throw NotImplementedError(e.what());
+    } catch (const numbers::NotPortedError& e) {
+        throw NotPortedError(e.what());
     } catch (const numbers::Error& e) {
         throw Error(e.python_type(), e.what());
     }

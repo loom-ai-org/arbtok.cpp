@@ -23,7 +23,6 @@ import random
 import sys
 import unicodedata
 
-REFERENCE = ("arbtok", "orthography2ipa", "langcodes", "linguatag", "ovos-spec-tools")
 #: The versions the port is held to. linguatag, langcodes and ovos-spec-tools are the versions that
 #: resolve with arbtok and orthography2ipa under `uv --prerelease=allow`. They decide how a language tag
 #: resolves, so a re-dump with other versions can change the dialects records. The number and date
@@ -59,9 +58,9 @@ def call(fn, *args, **kwargs):
 
 
 def versions():
-    out = {name: importlib.metadata.version(name) for name in REFERENCE}
-    installed = {name: importlib.metadata.version(name) for name in PINNED}
-    wrong = {name: v for name, v in installed.items() if v != PINNED[name]}
+    """The version of each pinned package, of Python and of its Unicode database, for a golden header."""
+    out = {name: importlib.metadata.version(name) for name in PINNED}
+    wrong = {name: v for name, v in out.items() if v != PINNED[name]}
     if wrong:
         raise SystemExit(f"the reference environment has {wrong}, the port is held to {PINNED}")
     out["python"] = sys.version.split()[0]
@@ -71,6 +70,14 @@ def versions():
 
 def unique(items):
     return list(dict.fromkeys(items))
+
+
+def deduplicated(records):
+    """The records without the repeats of an earlier record, and the number of repeats."""
+    first = {}
+    for r in records:
+        first.setdefault(dumps(r), r)
+    return list(first.values()), len(records) - len(first)
 
 
 def fuzz_strings(seed, count, alphabet, max_len=12):

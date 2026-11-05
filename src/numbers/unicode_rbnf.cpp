@@ -65,9 +65,9 @@ RbnfEngine RbnfEngine::for_language(std::string_view language) {
 }
 
 std::string RbnfEngine::format_number(std::string_view number, FormatPurpose) const {
-    if (language_ != "ar") throw NotImplementedError("unicode-rbnf is ported for ar only");
+    if (language_ != "ar") throw NotPortedError("unicode-rbnf is ported for ar only");
     if (!decimal_syntax(number)) throw InvalidOperation("[<class 'decimal.ConversionSyntax'>]");
-    throw NotImplementedError("unicode-rbnf rules are not ported");
+    throw NotPortedError("unicode-rbnf rules are not ported");
 }
 
 }  // namespace arbtok::numbers::unicode_rbnf

@@ -26,8 +26,13 @@ import hashlib
 import json
 import multiprocessing
 import os
+import pathlib
 import random
 import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from goldens import common  # noqa: E402
 
 ANCHOR = datetime.datetime(2000, 1, 1)
 ANCHORS = [ANCHOR, datetime.datetime(2024, 2, 29, 13, 45, 10, 500000), datetime.datetime(1, 1, 1),
@@ -226,18 +231,17 @@ def main():
     n_in, recorded = from_recorded(calls_path)
     generated, skipped = generated_tasks(answers)
     blocks = [(first, min(first + 9, 9999), "ar") for first in range(1, 10000, 10)]
+    n_tasks = len(recorded) + len(generated) + len(blocks)
     with multiprocessing.Pool(jobs) as pool:
         records = pool.map(_call_star, recorded + generated, chunksize=100)
         records += pool.starmap(nice_date_block, blocks, chunksize=2)
-    lines = list(dict.fromkeys(dumps(r) for r in records))
-    with gzip.open(out_path, "wt", encoding="utf-8", compresslevel=9) as f:
-        for line in lines:
-            f.write(line + "\n")
+    records, duplicates = common.deduplicated(records)
     print(f"recorded date calls in: {n_in}; out: {len(recorded)}", file=sys.stderr)
     print(f"generated in: {len(generated) + skipped}; out: {len(generated)}; left out as holiday texts "
           f"the port has no answer for: {skipped}", file=sys.stderr)
-    print(f"blocks in: {len(blocks)}; records out: {len(records)}; unique lines written: {len(lines)}",
+    print(f"blocks in: {len(blocks)}; tasks in: {n_tasks}; repeats: {duplicates}; records out: {len(records)}",
           file=sys.stderr)
+    common.write(out_path, "numbers_dates_ar", [("dates", n_tasks - duplicates, records)])
 
 
 if __name__ == "__main__":

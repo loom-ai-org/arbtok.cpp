@@ -20,14 +20,22 @@ number pattern of each bundled phone plan, and util's unit, date and time
 patterns); and the pattern strings the two modules pass to re functions directly.
 
 The texts of finditer are the generated texts of textnorm.generated_texts(), the
-Unicode probes, and SAMPLE other texts of textnorm.all_texts() drawn with
+Unicode probes, and SAMPLE other texts of textnorm.sample_pool() drawn with
 random.Random(SEED). fullmatch reads the phone-plan patterns over generated digit
 strings and the patterns the modules fullmatch over the finditer texts. match and
 search read the patterns the modules call with a pos or an endpos, at every
 position of the short texts of a sample.
+
+The ENGINE patterns are in no module. They hold the constructs where a
+backtracking matcher can part from sre: a word boundary and its negation at the
+ends of a string and in an empty string, and repeats of an item that can match
+empty, and the case pairs that sre adds to IGNORECASE beyond simple case folding
+(re._casefix._EXTRA_CASES, such as s and ſ, or µ and μ). Each of them reads every
+call kind over the ENGINE_TEXTS, and match and search read every position.
 """
 import random
 import re
+import re._casefix
 
 from arbtok import textnorm as tn
 from arbtok import util
@@ -54,6 +62,25 @@ INLINE = {
     "util:ampm": r"(?i)(\d+)(am|pm)", "util:time": (r"(\d{1,2})h(\d{2})", re.IGNORECASE),
     "util:date": r"(\d{1,4})[/-](\d{1,2})[/-](\d{1,4})", "util:word_hyphen_digit": r"(\w+)-(\d+)",
 }
+#: The first letter of each set of sre's extra IGNORECASE case pairs, and the partners of every
+#: letter of those sets, in code point order. A pattern of the first letters matches a partner only
+#: through the extra pairs.
+EXTRA_CASED = "".join(chr(c) for c, others in sorted(re._casefix._EXTRA_CASES.items()) if c < min(others))
+EXTRA_PARTNERS = "".join(chr(p) for c in sorted(re._casefix._EXTRA_CASES) for p in re._casefix._EXTRA_CASES[c])
+#: Patterns in no module, for the constructs where a backtracking matcher can part from sre.
+ENGINE = {
+    "engine:boundary": r"\b", "engine:not_boundary": r"\B", "engine:not_boundary_then": r"\B\S?",
+    "engine:not_boundary_or_end": r"(\Z){1,2}?(?!\B)|\w+", "engine:bol_or_a": r"((?:^|a){1,3})",
+    "engine:bol_or_a_lazy": r"((?:^|a){1,3}?)", "engine:bol_or_a_star": r"(?:^|a)*",
+    "engine:empty_or_b_lazy": r"((?:(a?)|b)+?)", "engine:empty_or_b": r"((?:(a?)|b)+)",
+    "engine:empty_or_b_star": r"(?:(a?)|b)*", "engine:a_or_nothing": r"(a|){2,4}",
+    "engine:optional_items": r"((?:a?){2,3})+", "engine:lazy_items_then_b": r"(?:a??){3}b",
+    "engine:end_or_a": r"(?:a|$){2,}", "engine:group_in_empty_repeat": r"(?:(b)|(a?))+?$",
+    "engine:extra_case_class": "(?i)[" + re.escape(EXTRA_CASED) + "]",
+    "engine:extra_case_alternation": "(?i)" + "|".join(re.escape(c) for c in EXTRA_CASED),
+}
+ENGINE_TEXTS = ["", "a", "aa", "aaa", "b", "ab", "ba", "aab", "bab", "abba", "ΣΙI", " ", "a b", "_a", "a\n",
+                EXTRA_CASED, EXTRA_PARTNERS]
 #: The patterns the modules fullmatch.
 FULLMATCH = ["textnorm._CLOCK_WORD", "textnorm._ARABIC_WORD", "textnorm._DEFINITE", "textnorm._YEAR_WORD",
              "textnorm._NAME_AND_DIGITS", "textnorm._VIN", "textnorm._YEAR_DIGITS", "textnorm._SPEAKABLE",
@@ -116,6 +143,8 @@ def patterns():
         out.update(unit_patterns(full_lang))
     for name, source in INLINE.items():
         out[name] = re.compile(*source) if isinstance(source, tuple) else re.compile(source)
+    for name, source in ENGINE.items():
+        out[name] = re.compile(source)
     return out
 
 
@@ -129,15 +158,14 @@ def match_value(m):
 
 
 def finditer_texts():
-    texts = tn_goldens.all_texts()
     generated = tn_goldens.generated_texts()
-    rest = [t for t in texts if t not in set(generated)]
+    rest = [t for t in tn_goldens.sample_pool() if t not in set(generated)]
     rng = random.Random(SEED)
     return common.unique(generated + common.UNICODE_PROBES + sorted(rng.sample(rest, min(SAMPLE, len(rest)))))
 
 
 def short_texts():
-    pool = sorted(t for t in tn_goldens.all_texts() if 0 < len(t) <= SHORT)
+    pool = sorted(t for t in tn_goldens.sample_pool() if 0 < len(t) <= SHORT)
     rng = random.Random(SEED + 1)
     generated = [t for t in tn_goldens.generated_texts() if len(t) <= SHORT]
     return common.unique(generated + sorted(rng.sample(pool, min(SHORT_SAMPLE, len(pool)))))
@@ -165,6 +193,8 @@ def corpora():
     phone_names = [n for n in names if n.startswith("phone:")]
     fullmatch_names = [n for n in FULLMATCH if n in table]
     positions = sum(len(t) + 1 for t in short)
+    engine = list(ENGINE)
+    engine_positions = sum(len(t) + 1 for t in ENGINE_TEXTS)
     return [
         ("patterns", len(names), [["pattern", n, table[n].pattern, table[n].flags] for n in names]),
         ("finditer", len(names) * len(texts),
@@ -178,4 +208,11 @@ def corpora():
         ("search", len(SEARCH_TO) * positions,
          [["search", n, t, 0, p, match_value(table[n].search(t, 0, p))] for n in SEARCH_TO for t in short
           for p in range(len(t) + 1)]),
+        ("engine", len(engine) * (len(ENGINE_TEXTS) * 2 + engine_positions * 2),
+         [["finditer", n, t, [match_value(m) for m in table[n].finditer(t)]] for n in engine for t in ENGINE_TEXTS]
+         + [["fullmatch", n, t, match_value(table[n].fullmatch(t))] for n in engine for t in ENGINE_TEXTS]
+         + [["match", n, t, p, match_value(table[n].match(t, p))] for n in engine for t in ENGINE_TEXTS
+            for p in range(len(t) + 1)]
+         + [["search", n, t, 0, p, match_value(table[n].search(t, 0, p))] for n in engine for t in ENGINE_TEXTS
+            for p in range(len(t) + 1)]),
     ]

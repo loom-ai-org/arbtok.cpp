@@ -8,6 +8,7 @@
 
 #include <zlib.h>
 
+#include <algorithm>
 #include <cstdio>
 #include <functional>
 #include <iostream>
@@ -80,12 +81,18 @@ odp::DateTime date_time(const Value& v) {
     return dt;
 }
 
-// The JSON text of a result, or {"err": "<Python class>"}.
+// What a call gives when the reference has a module for the language and the
+// port does not.
+const std::string kNotPorted = "<not ported>";
+
+// The JSON text of a result, {"err": "<Python class>"}, or kNotPorted.
 std::string result_of(const std::function<std::string()>& fn) {
     try {
         return fn();
     } catch (const Error& e) {
         return "{\"err\":" + q(e.python_type()) + "}";
+    } catch (const NotPortedError&) {
+        return kNotPorted;
     } catch (const std::exception& e) {
         return "{\"err\":" + q(std::string("C++ ") + e.what()) + "}";
     }
@@ -182,15 +189,46 @@ std::vector<std::string> compute_block(const std::string& kind, const Value& r) 
 
 }  // namespace
 
+// usage: numbers_parity [--stride <n>] <golden.jsonl.gz>...
+// --stride <n> checks only every n-th record, for the slow sanitizer builds.
+// The record count of the header is checked against every record of the file.
 int main(int argc, char** argv) {
-    if (argc < 2) {
-        std::cerr << "usage: numbers_parity <golden.jsonl.gz>...\n";
+    size_t stride = 1;
+    std::vector<std::string> files;
+    for (int a = 1; a < argc; ++a) {
+        if (std::string(argv[a]) == "--stride" && a + 1 < argc) {
+            stride = std::stoul(argv[++a]);
+        } else {
+            files.emplace_back(argv[a]);
+        }
+    }
+    if (files.empty() || stride == 0) {
+        std::cerr << "usage: numbers_parity [--stride <n>] <golden.jsonl.gz>...\n";
         return 2;
     }
     std::map<std::string, std::pair<long long, long long>> counts;  // kind -> (records, failures)
     long long records = 0, failures = 0;
-    for (int a = 1; a < argc; ++a) {
-        for (const std::string& line : read_lines(argv[a])) {
+    for (const std::string& file : files) {
+        const std::vector<std::string> lines = read_lines(file);
+        // The first line is the header that tools/goldens/common.py writes: the
+        // file must hold the record count it gives.
+        const Value header = lines.empty() ? Value() : json::parse(lines[0]);
+        const bool has_count = std::any_of(header.members.begin(), header.members.end(),
+                                           [](const auto& m) { return m.first == "count"; });
+        if (header.kind != Value::Kind::Object || !has_count) {
+            std::cout << "FAIL " << file << ": no header line with a record count\n";
+            ++failures;
+            continue;
+        }
+        const long long expected = header.at("count").integer();
+        const long long read = static_cast<long long>(lines.size()) - 1;
+        if (read != expected) {
+            std::cout << "FAIL " << file << ": the header gives " << expected << " records, the file holds " << read
+                      << "\n";
+            ++failures;
+        }
+        for (size_t k = 1; k < lines.size(); k += stride) {
+            const std::string& line = lines[k];
             const Value r = json::parse(line);
             const std::string kind = r[0].str;
             ++records;
@@ -199,7 +237,14 @@ int main(int argc, char** argv) {
             bool ok = false;
             std::string got, want;
             const bool block = kind.size() > 6 && kind.compare(kind.size() - 6, 6, "_block") == 0;
-            if (block) {
+            if (kind == "dispatch") {
+                // ["dispatch", route, record]: a "module" record gives kNotPorted,
+                // any other the reference result.
+                const Value& inner = r[2];
+                got = compute(inner[0].str, inner);
+                want = r[1].str == "module" ? kNotPorted : json::dump(inner[inner.size() - 1]);
+                ok = got == want;
+            } else if (block) {
                 const auto results = compute_block(kind, r);
                 std::string joined;
                 for (size_t k = 0; k < results.size(); ++k) joined += (k ? "\n" : "") + results[k];
@@ -223,6 +268,6 @@ int main(int argc, char** argv) {
         std::cout << kind << ": " << c.first << " records, " << c.first - c.second << " pass, " << c.second
                   << " fail\n";
     }
-    std::cout << records << " records, " << records - failures << " pass, " << failures << " fail\n";
+    std::cout << records << " records, " << failures << " failures\n";
     return failures ? 1 : 0;
 }

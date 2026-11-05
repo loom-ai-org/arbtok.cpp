@@ -1,10 +1,13 @@
 // The part of ovos-number-parser that arbtok calls: the Arabic cardinals,
 // ordinals and fractions it speaks, and the Arabic number words it reads.
-// A language code that names an Arabic variety for ovos-number-parser
-// (numbers_ar.resolve_ar_lang) is ported. Any other code raises
-// NotImplementedError, as the reference does for the arbtok lect codes it has
-// no rules for; numbers_to_digits gives those codes the text with its
-// whitespace collapsed, as the reference does.
+// Each entry point routes a language code as the reference does. A code that
+// names an Arabic variety for ovos-number-parser (numbers_ar.resolve_ar_lang)
+// is read by the Arabic code. A code the reference reads with the module of
+// another language, or with the unicode-rbnf rules of a language, raises
+// NotPortedError. A code the reference rejects gives what the reference gives:
+// NotImplementedError("Unsupported language: ...") from the speakers and from
+// extract_number, and the text with its whitespace collapsed from
+// numbers_to_digits.
 #pragma once
 
 #include <optional>

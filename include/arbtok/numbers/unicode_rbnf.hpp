@@ -18,9 +18,9 @@ public:
     // rules file.
     static RbnfEngine for_language(std::string_view language);
 
-    // engine.format_number(number, purpose).text. InvalidOperation for a text
-    // decimal.Decimal rejects; NotImplementedError for any other text, whose
-    // reading needs the rules.
+    // engine.format_number(number, purpose).text, for "ar". InvalidOperation for
+    // a text decimal.Decimal rejects; NotPortedError for any other text, whose
+    // reading needs the rules, and for any other language.
     std::string format_number(std::string_view number, FormatPurpose purpose = FormatPurpose::CARDINAL) const;
 
     const std::string& language() const { return language_; }

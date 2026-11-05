@@ -714,7 +714,8 @@ struct Matcher {
             case Node::StrStart: return pos == 0;
             case Node::StrEnd: return pos == end;
             case Node::WordB: return word_before(pos) != word_at(pos);
-            case Node::NotWordB: return word_before(pos) == word_at(pos);
+            // sre fails \B, as \b, when the string up to endpos is empty.
+            case Node::NotWordB: return end != 0 && word_before(pos) == word_at(pos);
             default: return false;
         }
     }
@@ -788,12 +789,15 @@ struct Matcher {
 
     bool rep(const Node& n, long count, size_t pos, size_t last, const Cont* k) {
         const bool more = n.max < 0 || count < n.max;
+        // As in sre, an item past the minimum is not tried where the previous
+        // item past the minimum started, and the items up to the minimum leave
+        // that position as it was.
         auto item = [&] {
             Cont c;
             c.type = Cont::Rep;
             c.rep = &n;
             c.count = count + 1;
-            c.last = pos;
+            c.last = count < n.min ? last : pos;
             c.next = k;
             return seq(n.alts[0], 0, pos, &c);
         };

@@ -1,11 +1,13 @@
 #include "arbtok/numbers/ovos_number_parser.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdlib>
 #include <map>
 
 #include "arbtok/numbers/errors.hpp"
+#include "arbtok/numbers/unicode_rbnf.hpp"
 #include "numbers_ar.hpp"
 
 namespace arbtok::numbers::ovos_number_parser {
@@ -36,8 +38,49 @@ std::string base_lang(std::string_view lang) {
 
 bool is_ar(std::string_view lang) { return numbers_ar::resolve_ar_lang(lang).has_value(); }
 
+// A code the reference reads with the module of another language, which the
+// port does not hold.
 [[noreturn]] void not_ported(std::string_view lang) {
-    throw NotImplementedError("language not ported: '" + std::string(lang) + "'");
+    throw NotPortedError("language not ported: '" + std::string(lang) + "'");
+}
+
+[[noreturn]] void unsupported(std::string_view lang) {
+    throw NotImplementedError("Unsupported language: '" + std::string(lang) + "'");
+}
+
+// The fallback of pronounce_number and pronounce_ordinal to unicode-rbnf, for
+// lang.split("-")[0]. A code with rules is read by those rules, which the port
+// does not hold. Any error of the fallback is NotImplementedError.
+[[noreturn]] void rbnf_fallback(std::string_view lang) {
+    try {
+        unicode_rbnf::RbnfEngine::for_language(lang.substr(0, lang.find('-')));
+    } catch (const Error&) {
+        unsupported(lang);
+    }
+    not_ported(lang);
+}
+
+// The prefixes _pronounce_number_dispatch has a module for, after en and az and
+// the Arabic codes.
+bool pronounce_number_module(std::string_view lang) {
+    return starts_any(lang, {"en", "az", "bg", "ca", "ast", "oc", "an", "cs", "da", "de", "gl", "el", "es", "eu",
+                             "et", "fa", "fi", "fr", "he", "hr", "hu", "id", "ms", "tr", "it", "kab", "fy", "nn",
+                             "nb", "no", "nl", "pl", "pt", "mwl", "ro", "ru", "sk", "sl", "sv", "uk"});
+}
+
+// The prefixes pronounce_ordinal has a module for, other than the Arabic codes.
+bool pronounce_ordinal_module(std::string_view lang) {
+    return starts_any(lang, {"pt", "mwl", "ro", "ast", "ca", "oc", "an", "da", "de", "et", "fi", "hr", "el", "he",
+                             "hu", "id", "ms", "tr", "fy", "nn", "nb", "no", "nl", "sv", "gl", "cs", "sk", "pl", "uk",
+                             "eu", "fa", "bg", "sl", "kab"});
+}
+
+// The keys of _NICE_NUMBER_FNS.
+bool nice_number_lang(std::string_view lang2) {
+    static const std::array<std::string_view, 31> keys = {
+        "ar", "az", "bg", "ca", "cs", "da", "de", "el", "es", "et", "eu", "fa", "fi", "fr", "fy", "he",
+        "hr", "hu", "id", "it", "ms", "nb", "nl", "nn", "pl", "ru", "sk", "sl", "sv", "tr", "uk"};
+    return std::find(keys.begin(), keys.end(), lang2) != keys.end();
 }
 
 const BigInt& ten_to_15() {
@@ -168,7 +211,11 @@ std::string pronounce_number(const Number& number, std::string_view lang, int pl
     const bool big = compare(abs(n), Number(ten_to_15())) >= 0;
     std::string spoken;
     try {
-        if (starts_any(lang, {"en", "az"}) || !is_ar(lang)) not_ported(lang);
+        if (starts_any(lang, {"en", "az"})) not_ported(lang);
+        if (!is_ar(lang)) {
+            if (pronounce_number_module(lang)) not_ported(lang);
+            rbnf_fallback(lang);
+        }
         const auto c = grammatical_case ? grammatical_case : numbers_ar::resolve_ar_lang(lang);
         spoken = text::s8(numbers_ar::pronounce_number_ar(n, places, c, numbers_ar::resolve_ar_lect(lang),
                                                           gender));
@@ -187,12 +234,16 @@ std::string pronounce_number(const Number& number, std::string_view lang, int pl
 
 std::string pronounce_ordinal(const Number& number, std::string_view lang, GrammaticalGender gender,
                               const std::optional<std::string>& grammatical_case) {
-    if (starts_any(lang, {"pt", "mwl", "ro", "ast", "ca", "oc", "an"}) || !is_ar(lang)) not_ported(lang);
+    if (starts_any(lang, {"pt", "mwl", "ro", "ast", "ca", "oc", "an"})) not_ported(lang);
+    if (!is_ar(lang)) {
+        if (pronounce_ordinal_module(lang)) not_ported(lang);
+        rbnf_fallback(lang);
+    }
     return text::s8(numbers_ar::pronounce_ordinal_ar(number, gender, grammatical_case));
 }
 
 std::string pronounce_fraction(std::string_view fraction_word, std::string_view lang) {
-    if (starts_any(lang, {"pt", "ast", "ca", "oc", "an", "mwl", "gl", "ro"}) || !is_ar(lang)) not_ported(lang);
+    if (starts_any(lang, {"pt", "ast", "ca", "oc", "an", "mwl", "gl", "ro"})) not_ported(lang);
     // _pronounce_fraction_generic
     const auto parts = text::split(text::u(fraction_word), U"/");
     if (parts.size() != 2) {
@@ -209,8 +260,26 @@ std::string pronounce_fraction(std::string_view fraction_word, std::string_view 
     const bool negative = n1.negative != n2.negative;
     n1 = abs(n1);
     n2 = abs(n2);
+    const std::string lang2 = base_lang(lang);
     std::optional<std::string> result;
-    if (compare(n2, BigInt(2)) >= 0 && compare(n2, BigInt(20)) <= 0) {
+    // _NICE_NUMBER_FNS.get(lang2), else nice_number_ar for an Arabic code
+    const bool nice_ar = lang2 == "ar" || (!nice_number_lang(lang2) && is_ar(lang));
+    const bool nice_range = compare(n2, BigInt(2)) >= 0 && compare(n2, BigInt(20)) <= 0;
+    if (lang2 == "en") {
+        std::string denominator;
+        if (compare(n2, BigInt(2)) == 0) {
+            denominator = compare(n1, BigInt(1)) == 0 ? "half" : "halves";
+        } else if (compare(n2, BigInt(4)) == 0) {
+            denominator = compare(n1, BigInt(1)) == 0 ? "quarter" : "quarters";
+        } else {
+            denominator = pronounce_ordinal(n2, lang);
+            if (compare(n1, BigInt(1)) != 0) denominator += "s";
+        }
+        result = pronounce_number(n1, lang) + " " + denominator;
+    } else if (nice_range && nice_number_lang(lang2) && !nice_ar) {
+        not_ported(lang);
+    }
+    if (!result && nice_ar && nice_range) {
         const U32 spoken = numbers_ar::nice_number_ar(true_divide(n1, n2), *n2.to_ll());
         const auto tokens = text::split_ws(spoken);
         bool all_numeric = true;
@@ -227,7 +296,11 @@ std::string pronounce_fraction(std::string_view fraction_word, std::string_view 
             result = joined;
         }
     }
-    if (!result) result = pronounce_number(n1, lang) + " " + pronounce_ordinal(n2, lang);
+    if (!result) {
+        // in Python's order: the module that speaks n1 is reached first
+        const std::string numerator = pronounce_number(n1, lang);
+        result = numerator + " " + pronounce_ordinal(n2, lang);
+    }
     if (negative) {
         // _minus_word(lang)
         const std::string minus_one = pronounce_number(BigInt(-1), lang);
@@ -251,7 +324,7 @@ std::optional<Number> extract_number(U32View text, std::string_view lang, bool o
     }
     if (starts_any(lang, {"en", "az"}) || !is_ar(lang)) {
         if (extract_number_lang(lang)) not_ported(lang);
-        throw NotImplementedError("Unsupported language: '" + std::string(lang) + "'");
+        unsupported(lang);
     }
     return numbers_ar::extract_number_ar(unglued, ordinals, numbers_ar::resolve_ar_lect(lang));
 }
@@ -406,10 +479,17 @@ std::string numbers_to_digits(std::string_view utterance, std::string_view lang)
         not_ported(lang);
     }
     if (is_ar(lang)) return text::s8(numbers_ar::numbers_to_digits_ar(text::u(utterance), lang));
-    // kab has a module of its own; any other code reaches the generic reader,
-    // which reads a number only where extract_number has a language module.
-    if (starts(lang, "kab") || extract_number_lang(lang)) not_ported(lang);
-    return text::s8(text::join(text::split_ws(text::u(utterance)), U" "));
+    if (starts(lang, "kab")) not_ported(lang);
+    // _numbers_to_digits_generic reads a number only where extract_number has a
+    // language module, and asks that module about each token that is not empty
+    // after its punctuation is stripped.
+    const std::vector<U32> tokens = text::split_ws(text::u(utterance));
+    if (extract_number_lang(lang)) {
+        for (const U32& t : tokens) {
+            if (!text::strip(t, U".,!?;:؟،؛").empty()) not_ported(lang);
+        }
+    }
+    return text::s8(text::join(tokens, U" "));
 }
 
 bool is_numeric(std::string_view input_str) {

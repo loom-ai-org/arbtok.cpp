@@ -18,18 +18,28 @@ The texts are:
 - every string literal of the sdist tests;
 - the gold sentences, diacritized and raw;
 - the generated texts of generated_texts(), one family per rule;
+- the calendar texts of calendar_texts(): leap days of century years and holiday
+  names;
 - the calls the sdist test suite makes, recorded by record_calls.py in
   tests/data/textnorm_calls.jsonl.gz, replayed as they were made. A recorded call
   that speaks or reads numbers in a language that is not Arabic is left out.
 
 All texts go through the named bundles of normalize_asr and through the default
 config of normalize_for_tts with lang "ar". The other configs read a sample: the
-generated texts and SAMPLE_SIZE other texts drawn with random.Random(SEED). The
+generated texts, the calendar texts and SAMPLE_SIZE other texts drawn with
+random.Random(SEED). The
 number parser makes those configs slow, so the sample keeps the dump short. The
 lects of LECTS read the sample under the default config and the dialect_numbers
 configs. "en" and "fr" read a smaller sample under the configs that neither speak
 nor read numbers, because the C++ port has the Arabic number words only; "en"
 also reads the Arabic-only rules, which raise ValueError.
+
+The codes of LANGUAGES read the generated and calendar texts under the configs that speak or
+read numbers, with and without leave_unspeakable_numbers. They are codes that
+arbtok counts as Arabic and the reference libraries do not, codes those libraries
+reject, and the Arabic lect codes. A record is kept unless the reference reached
+code that the port does not hold (tools/goldens/routes.py), and the corpus states
+how many records it leaves out for that reason.
 
 Each corpus states its expected count from its factor lists before its records
 are made, and the dumper compares that count with the records it writes.
@@ -41,11 +51,13 @@ import json
 import multiprocessing
 import pathlib
 import random
+import sys
 
 from arbtok import textnorm as tn
 from arbtok.textnorm import ARABIC_LANGUAGE_CODES, is_arabic_lang
 
 from . import common
+from . import routes
 from .dialects import tag_grid
 
 SEED = 3
@@ -53,6 +65,7 @@ SAMPLE_SIZE = 700
 SMALL_SAMPLE = 300
 LECTS = ("ar-SA", "ar-EG", "arz", "apc", "ary", "acw", "mey-MR")
 FOREIGN = ("en", "fr")
+LANGUAGES = ("ur", "mey-MR", "ar_SA", "xx", "ara", "AR", "arz", "apc", "afb", "ayl", "acw", "ars", "arb", "ary")
 TUPLE_FIELDS = ("phone_shapes", "phone_regions", "phone_prefixes", "identifier_words", "month_names")
 WORKERS = 4
 CALLS = pathlib.Path(__file__).resolve().parent.parent.parent / "tests" / "data" / "textnorm_calls.jsonl.gz"
@@ -340,8 +353,21 @@ def generated_texts():
     return common.unique(out)
 
 
+def calendar_texts():
+    """Leap days of century years, and holiday names alone and beside a clock."""
+    out = ["29/2/1900", "29/2/2000", "29/2/2100", "1900-02-29", "2000-02-29", "2100-02-29", "28/2/1900", "1/3/2100"]
+    for word in ("المولد", "حانوكا", "عاشوراء", "نوروز", "رمضان", "ديوالي"):
+        out += [word, f"الساعة 8 {word}", f"الساعة ثمانية {word}", f"الساعة الثامنة {word}",
+                f"الساعة الثانية عشرة {word}", f"الساعة الخامسة {word} صباحا", f"الساعة الثامنة والربع {word}",
+                f"{word} الساعة 8"]
+    return out
+
+
 @functools.lru_cache(maxsize=None)
-def all_texts():
+def sample_pool():
+    """The texts that the seeded samples draw from: the sdist test strings, the gold
+    sentences and the generated texts. The calendar texts are not in the pool, so
+    they do not change what a sample draws."""
     texts = common.test_strings()
     texts += [s for _, s in common.gold_sentences()]
     texts += [s for _, s in common.gold_sentences("raw")]
@@ -350,16 +376,22 @@ def all_texts():
 
 
 @functools.lru_cache(maxsize=None)
+def all_texts():
+    return tuple(common.unique(sample_pool() + tuple(calendar_texts())))
+
+
+@functools.lru_cache(maxsize=None)
 def sample_texts(size=SAMPLE_SIZE):
     generated = generated_texts()
-    rest = [t for t in all_texts() if t not in set(generated)]
+    rest = [t for t in sample_pool() if t not in set(generated)]
     rng = random.Random(SEED * 1000 + size)
-    return tuple(common.unique(generated + sorted(rng.sample(rest, min(size, len(rest))))))
+    head = generated + calendar_texts()
+    return tuple(common.unique(head + sorted(rng.sample(rest, min(size, len(rest))))))
 
 
 @functools.lru_cache(maxsize=None)
 def small_sample():
-    rest = list(all_texts())
+    rest = list(sample_pool())
     rng = random.Random(SEED * 7)
     return tuple(sorted(rng.sample(rest, min(SMALL_SAMPLE, len(rest)))))
 
@@ -382,9 +414,36 @@ def record(item):
                                                                          decoded("tts", k))]
 
 
-def run(items):
+def run(items, fn=record):
     with multiprocessing.get_context("fork").Pool(WORKERS) as pool:
-        return pool.map(record, items, chunksize=64)
+        return pool.map(fn, items, chunksize=64)
+
+
+def routed(item):
+    """record(item) when the reference reached only code the port holds, else None."""
+    route, out = routes.route_of(lambda: record(item))
+    return None if route == routes.MODULE else out
+
+
+def kept(name, items, fn):
+    """The corpus of the records of items that fn keeps, and the count it leaves out."""
+    routes.install()
+    out = run(items, fn)
+    records = [r for r in out if r is not None]
+    left_out = len(out) - len(records)
+    print(f"  {name}: {len(items)} in, {left_out} left out as reaching code the port does not hold", file=sys.stderr)
+    return counted(name, len(items) - left_out, records)
+
+
+def language_items():
+    tts = common.unique(key(encode_config(c)) for c in (
+        tn.TtsNorm(), tn.TtsNorm(cardinal_numbers=True), tn.TtsNorm(cardinal_numbers=True, leave_unspeakable_numbers=True),
+        tn.TtsNorm(dialect_numbers=True, leave_unspeakable_numbers=True),
+        dataclasses.replace(tn.TtsNorm(**AGENT), leave_unspeakable_numbers=True)))
+    asr = common.unique(key(encode_config(c)) for c in (tn.AsrNorm(spoken_numbers_to_digits=True), tn.CER_CANONICAL))
+    texts = generated_texts() + calendar_texts()
+    return ([("tts", t, lang, c) for lang in LANGUAGES for c in tts for t in texts]
+            + [("asr", t, lang, c) for lang in LANGUAGES for c in asr for t in texts])
 
 
 def pairs(d):
@@ -520,4 +579,5 @@ def corpora():
     out.append(counted("validation", n, recs))
     out.append(counted("normalize_asr", n_asr, run(asr)))
     out.append(counted("normalize_for_tts", n_tts, run(tts)))
+    out.append(kept("languages", language_items(), routed))
     return out
