@@ -426,7 +426,7 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | o2i_plugins | constants 1, language_codes 3, rescorers 58, normalize 752, sandhi 852, g2p 7971 | 9637 |
 | orthography | constants 5, allowed_classes 354, pinned_class 177, project_class 17374, source_marks 21567 | 39477 |
 | phoonnx | voice 8746 | 8746 |
-| plugin | constants 1, init 24, normalize 1413, transcribe 4909, transcribe_word 21630 | 27977 |
+| plugin | constants 1, init 26, normalize 1413, transcribe 5353, transcribe_word 21630 | 28423 |
 | pyre | patterns 297, finditer 283338, fullmatch 43984, match 52344, search 19629, engine 23450 | 423042 |
 | sandhi | constants 1, apply_cross_word 30725, pausal 3465, has_article 394, is_bare_wasl_alif 394 | 34979 |
 | stress | first_segment_len 6077, stress_ipa 190275, stress_words 6078 | 202430 |
@@ -453,7 +453,7 @@ The default stem lexicon is GPL-2.0-derived data, and this repository does not h
 | diacritize | 14249: word 7304, text 372, vocalize 6573 |
 | fusion | 5678: fusion 5678 |
 | o2i_plugins | 2142: normalize 252, g2p 1890 |
-| plugin | 1458: normalize 388, transcribe 1070 |
+| plugin | 1601: normalize 388, transcribe 1213 |
 | phoonnx | 1112: voice 1112 |
 
 The other 19 golden files that `tools/dump_goldens.py` writes hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
@@ -514,12 +514,14 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | fusion | logprobs uses the libm `std::exp` | 5027 of 29945 |
 | fusion | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 78 of 29945 |
 | translit | `_RAISED` maps e to a, not i | 26 of 38789 |
-| plugin | normalize never restores the marks | 1196 of 6995 (every 4th record) |
-| plugin | the full register keeps the pausal forms | 120 of 6995 (every 4th record) |
-| plugin | a Latin word ends at a curly apostrophe | 28 of 27977 |
-| plugin | the lattice diacritizer always runs in waqf | 168 of 27977 |
-| plugin | the lattice diacritizer ignores the `lexicon` option | 89 of 27977 |
-| plugin | the lattice diacritizer ignores the `dialect_lexicon` option | 5 of 27977 |
+| plugin | normalize never restores the marks | 1279 of 7106 (every 4th record) |
+| plugin | the full register keeps the pausal forms | 125 of 7106 (every 4th record) |
+| plugin | a Latin word ends at a curly apostrophe | 34 of 28423 |
+| plugin | the lattice diacritizer always runs in waqf | 168 of 28423 |
+| plugin | the lattice diacritizer ignores the `lexicon` option | 89 of 28423 |
+| plugin | the lattice diacritizer ignores the `dialect_lexicon` option | 5 of 28423 |
+| plugin | the lattice diacritizer always runs with no closed-class lexicon | 5 of 28423 |
+| plugin | the fusion diacritizer ignores the `dialect_lexicon` option | 6 of 28423 |
 | o2i_plugins | ArbtokSandhi drops a stress mark at the end of a word | 28 of 9637 |
 | o2i_plugins | ArbtokSandhi restores the last stress mark of a word, not the first | 24 of 9637 |
 | o2i_plugins | the rescore plugin contributes no lattice rescorer | 749 of 9637 |
@@ -597,7 +599,7 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
-| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` runs `validate_rescorer_output` on each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. That check reads `declared_phonemes` (`:1069`, `:864`), which is `spec.phonemes`, or the grapheme values when that list is empty. The Python `G2P` runs no such check. Python `conformance.assert_rescorer_conforms` has the same rule over `phoneme_inventory(spec)`, a wider set | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. A word whose paths hold a phoneme of `phoneme_inventory` that `spec.phonemes` leaves out raises `std::runtime_error`. The 10 rejected symbols are ɑ, ɪ, ɑː, ʊ, oː, ʊː, ɪː, ə, ɛː and eː, and each is in `phoneme_inventory` of its lect. 1042 of the 7971 g2p records are expected divergences |
+| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` runs `validate_rescorer_output` on each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. That check reads `declared_phonemes` (`:1069`, `:864`), which is `spec.phonemes`, or the grapheme values when that list is empty. The Python `G2P` runs no such check. Python `conformance.assert_rescorer_conforms` has the same rule over `phoneme_inventory(spec)`, a wider set | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. `spec.phonemes` is empty in each of the 37 lects of these records, so the set is the grapheme values. A word whose paths hold a phoneme of `phoneme_inventory` outside the grapheme values raises `std::runtime_error`. The 10 rejected symbols are ɑ, ɪ, ɑː, ʊ, oː, ʊː, ɪː, ə, ɛː and eː, and each is in `phoneme_inventory` of its lect. 1042 of the 7971 g2p records are expected divergences: 942 give a transcription in Python, and 100 raise `IndexError` from `ArbtokSandhi` |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
 
 ## Expected divergences
