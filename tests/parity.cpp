@@ -112,6 +112,7 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
     Tally t;
     if (lines.empty()) throw std::runtime_error("empty golden file " + path);
     t.expected = json_line::header_count(lines[0]);
+    if (t.expected < 1) throw std::runtime_error("golden header gives no records: " + path);
     const long expected_hashed = header_hashed(lines[0]);
     if (const std::string golden_class = header_cpu_class(lines[0]); !golden_class.empty()) {
         const std::string why = cpu_class::mismatch(path, golden_class);

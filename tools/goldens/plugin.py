@@ -3,14 +3,18 @@
 ArbtokG2PPlugin runs under a set of constructor keyword sets: the defaults (the
 fusion diacritizer, the pausal register), the full register, the lattice
 diacritizer, nativize, arabizi, stress and diacritize off, no stem or closed-class
-lexicon, and three varieties. One instance serves all the calls of a keyword
-set, in record order, as scriptconv keeps one engine per variety.
+lexicon, three varieties, and three lattice sets: the full register, no stem or
+closed-class lexicon, and ar-EG with no closed-class lexicon. One instance serves
+all the calls of a keyword set, in record order, as scriptconv keeps one engine
+per variety.
 
 The texts are every 12th Arabic sdist test string, every sdist test string that
-holds both a Latin and an Arabic letter, and the first 60 that hold a Latin
-letter and no Arabic one. transcribe runs the defaults over every text, also
-with the Arabizi hint true and false, and each other keyword set over every 4th
-text. normalize runs the defaults over every Arabic text and three other keyword
+holds both a Latin and an Arabic letter, the first 60 that hold a Latin letter
+and no Arabic one, and EXTRA_TEXTS: Latin words with a curly apostrophe, and
+ar-EG sentences whose closed-class words change the reading. transcribe runs the
+defaults over every text, also with the Arabizi hint true and false, each other
+keyword set over every 4th text, and the lattice sets over EXTRA_TEXTS too.
+normalize runs the defaults over every Arabic text and three other keyword
 sets over every 4th one. transcribe_word runs the words of every
 400th line of tests/ar_test.txt, every 100th closed-class lexicon word, every
 10th spec word exception and Latin words, alone and with orthographic neighbours and a
@@ -26,11 +30,14 @@ from . import common
 CONFIGS = [{}, {"register": "full"}, {"fusion": False}, {"nativize": False}, {"arabizi": False}, {"stress": False},
            {"diacritize": False}, {"lexicon": None, "dialect_lexicon": False}, {"lang": "ar-EG"},
            {"lang": "ar-SA-x-najd"}, {"lang": "ar-MA"}]
+LATTICE_CONFIGS = [{"fusion": False, "register": "full"}, {"fusion": False, "lexicon": None, "dialect_lexicon": False},
+                   {"fusion": False, "lang": "ar-EG", "dialect_lexicon": False}]
+EXTRA_TEXTS = ["it’s", "don’t wait", "قال it’s مهم", "ازيك يا صاحبي", "انا مش فاهم ليه كده", "ده مش كويس خالص"]
 NORMALIZE_CONFIGS = [{}, {"register": "full"}, {"fusion": False}, {"diacritize": False}]
 WORD_CONFIGS = [{}, {"register": "full"}, {"stress": False}, {"nativize": False}, {"lang": "ar-EG"}]
-INIT_CONFIGS = CONFIGS + [{"register": "bad"}, {"register": ""}, {"register": "full", "pausal": True},
-                          {"pausal": False}, {"lang": "xx"}, {"lang": "en"}, {"lang": "ar_SA"}, {"lang": "arz"},
-                          {"lang": None}, {"lexicon": "", "fusion": False}]
+INIT_CONFIGS = CONFIGS + LATTICE_CONFIGS + [
+    {"register": "bad"}, {"register": ""}, {"register": "full", "pausal": True}, {"pausal": False}, {"lang": "xx"},
+    {"lang": "en"}, {"lang": "ar_SA"}, {"lang": "arz"}, {"lang": None}, {"lexicon": "", "fusion": False}]
 ATTRIBUTES = ["lang", "fusion", "diacritize", "stress", "lexicon", "dialect_lexicon", "nativize", "arabizi", "pausal"]
 CONTEXTS = [None, {}, {"prev_word": "فِي"}, {"next_word": "الْبَيْت"}, {"prev_word": "مِنْ", "next_word": "رَبِّهِمْ"},
             {"lang": "ar-EG"}, {"lang": "xx"}, {"prev_word": "و", "lang": "ar-SA-x-najd"},
@@ -59,7 +66,7 @@ def texts():
     arabic = common.arabic_test_strings()[::12]
     mixed = [s for s in strings if is_latin(s) and has_arabic(s)]
     latin = [s for s in strings if is_latin(s) and not has_arabic(s)][:60]
-    return common.unique(arabic + mixed + latin)
+    return common.unique(arabic + mixed + latin + EXTRA_TEXTS)
 
 
 def words():
@@ -79,6 +86,7 @@ def corpora():
     ts = texts()
     arabic_ts = [t for t in ts if has_arabic(t)]
     transcribe_inputs = [(c, t, None) for c in CONFIGS for t in (ts if c == {} else ts[::4])]
+    transcribe_inputs += [(c, t, None) for c in LATTICE_CONFIGS for t in common.unique(ts[::4] + EXTRA_TEXTS)]
     transcribe_inputs += [({}, t, hint) for hint in (True, False) for t in ts if is_latin(t)]
     ws = words()
     word_inputs = [(c, w, ctx) for c in WORD_CONFIGS for i, w in enumerate(ws)

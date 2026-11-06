@@ -5,7 +5,7 @@ that ArbtokRescorers gives for every supported lect; ArbtokDiacritizer.normalize
 over Arabic test strings under ARBTOK_DIACRITIZER unset, "fusion", " Fusion ",
 "lattice" and a value it refuses; and ArbtokSandhi.apply over the stressed
 words of tokenizer sentences with each pause pattern, and over a grid of
-words with stress marks inside and at the ends.
+words with stress marks inside and at the ends, and with two marks.
 
 The g2p corpus runs orthography2ipa.G2P(lang, plugins=...).transcribe(text),
 which reaches the plugins through their entry points, named "arbtok". The
@@ -29,7 +29,8 @@ STAGES = ["normalize", "rescore", "sandhi"]
 PLUGIN_SETS = [{s: ["arbtok"] for s in STAGES}] + [{s: ["arbtok"]} for s in STAGES]
 GRID_WORDS = [("ˈmin", "مِن"), ("ˈrabbihim", "رَبِّهِمْ"), ("maˈdiːnatun", "مَدِينَةٌ"), ("ˈqaːdˤin", "قَاضٍ"),
               ("kiˈtaːban", "كِتَابًا"), ("ˌʔal", "ال"), ("ˈ", "ـ"), ("", ""), ("ˈfiː", "فِي"), ("albajtˈ", "الْبَيْت"),
-              ("ˈmuʔminun", "مُؤْمِنٌ"), ("ˈkataba", "كَتَبَ"), ("min", "مِنْ"), ("ˈbajtika", "بَيْتِكَ")]
+              ("ˈmuʔminun", "مُؤْمِنٌ"), ("ˈkataba", "كَتَبَ"), ("min", "مِنْ"), ("ˈbajtika", "بَيْتِكَ"),
+              ("ˌkaˈtaba", "كَتَبَ"), ("ˈkaˌtaba", "كَتَبَ")]
 
 _G2P = {}
 _DIACRITIZER = o2i_plugins.ArbtokDiacritizer()

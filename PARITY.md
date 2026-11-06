@@ -33,7 +33,7 @@ orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned t
 arbtok has no command-line interface. Its only entry points are the three orthography2ipa plugins of `o2i_plugins` (normalize, rescore and sandhi). `arbtok::o2i_plugins::register_plugins()` registers them with orthography2ipa.cpp (see Plugins and the phoonnx front end).
 
 <!-- inventory:begin -->
-362 public symbols, 346 ported.
+366 public symbols, 350 ported.
 
 The count covers 25 modules and the package itself: each module-level name, each public class member, and each name of the package `__all__`.
 
@@ -167,6 +167,10 @@ The count covers 25 modules and the package itself: each module-level name, each
 | `espeak_wrapper.EspeakPhonemizer.chunk_text` |  | not ported: phoonnx and scriptconv never import it; no voice path calls it |
 | `fusion.logprobs` | `arbtok::fusion::logprobs` | ported |
 | `fusion.Hypothesis` | `arbtok::fusion::Hypothesis` | ported |
+| `fusion.Hypothesis.class_ids` | `arbtok::fusion::Hypothesis::class_ids` | ported |
+| `fusion.Hypothesis.logprob` | `arbtok::fusion::Hypothesis::logprob` | ported |
+| `fusion.Hypothesis.text` | `arbtok::fusion::Hypothesis::text` | ported |
+| `fusion.Hypothesis.lattice_cost` | `arbtok::fusion::Hypothesis::lattice_cost` | ported |
 | `fusion.FusionDiacritizer` | `arbtok::fusion::FusionDiacritizer` | ported |
 | `fusion.FusionDiacritizer.diacritizer` | `arbtok::fusion::FusionDiacritizer::diacritizer` | ported |
 | `fusion.FusionDiacritizer.diacritize` | `arbtok::fusion::FusionDiacritizer::diacritize` | ported |
@@ -405,7 +409,7 @@ The count covers 25 modules and the package itself: each module-level name, each
 
 ## Goldens
 
-A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header with the reference versions, the gold commit and the count per corpus. Each other line is one record, `[function, arguments..., result]`, in compact JSON. An exception is `{"err": "<Python class>"}`. A float is its Python `repr` string. The header holds the input count of each corpus. `tools/dump_goldens.py` prints the input count and the record count of each corpus. After it writes a file, it counts the records in the file again. It stops when that count is not the sum of the input counts. `arbtok_parity` fails when a file does not hold the record count of its header.
+A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header with the reference versions, the gold commit and the count per corpus. Each other line is one record, `[function, arguments..., result]`, in compact JSON. An exception is `{"err": "<Python class>"}`. A float is its Python `repr` string. The header holds the input count of each corpus. `tools/dump_goldens.py` prints the input count and the record count of each corpus. After it writes a file, it counts the records in the file again. It stops when that count is not the sum of the input counts. `arbtok_parity` fails when a file does not hold the record count of its header, and when its header gives no records.
 
 | Module | Corpora | Records |
 | --- | --- | --- |
@@ -419,10 +423,10 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | lattice | constants 2, defers_to_cascade 5186, word_ipa 16616, word_lattice 2770, spec_word_exception 3832 | 28406 |
 | lexicon | constants 3, parse 916, parse_shares 916, source 1, get 31654, ambiguous 6666, contains 1333, len 1, env 56 | 41546 |
 | nisba | constants 1, restore_nisba 9581 | 9582 |
-| o2i_plugins | constants 1, language_codes 3, rescorers 58, normalize 752, sandhi 824, g2p 7971 | 9609 |
+| o2i_plugins | constants 1, language_codes 3, rescorers 58, normalize 752, sandhi 852, g2p 7971 | 9637 |
 | orthography | constants 5, allowed_classes 354, pinned_class 177, project_class 17374, source_marks 21567 | 39477 |
 | phoonnx | voice 8746 | 8746 |
-| plugin | constants 1, init 21, normalize 1406, transcribe 4211, transcribe_word 21630 | 27269 |
+| plugin | constants 1, init 24, normalize 1413, transcribe 4909, transcribe_word 21630 | 27977 |
 | pyre | patterns 297, finditer 283338, fullmatch 43984, match 52344, search 19629, engine 23450 | 423042 |
 | sandhi | constants 1, apply_cross_word 30725, pausal 3465, has_article 394, is_bare_wasl_alif 394 | 34979 |
 | stress | first_segment_len 6077, stress_ipa 190275, stress_words 6078 | 202430 |
@@ -441,7 +445,7 @@ The vocalize corpus runs `arbtok.vocalize(text, lect)` end to end: the word of e
 
 The env records of the lexicon and dialect_lexicon suites run one call under a fresh root directory with its own environment variables and files (`tools/goldens/envcase.py`). The Python call runs in a child interpreter, because `arbtok.lexicon` and `huggingface_hub` read the environment at import. The C++ call runs in the test process with the same variables set.
 
-The goldens do not hold the default stem lexicon, which is GPL-2.0-derived data, or any text that comes from it. The dumper runs every corpus a second time in a child interpreter. Its Hugging Face cache holds the same revision of the lexicon, with the header row and no entries. A record whose line differs between the two runs depends on the stem lexicon. The golden keeps the input items of that record. In place of each result item it holds `{"sha256": <hex>}`, where `<hex>` is the SHA-256 of the Python line. `arbtok_parity` writes the C++ line of the record and compares its SHA-256. A mismatch prints the C++ line and both digests. The header of the file gives the count of hashed records as `sha256_records`. The test fails when the file holds another count.
+The default stem lexicon is GPL-2.0-derived data, and this repository does not hold the lexicon file. A golden holds a digest in place of each result that depends on the lexicon. The dumper runs every corpus a second time in a child interpreter. Its Hugging Face cache holds the same revision of the lexicon, with the header row and no entries. A record whose line differs between the two runs depends on the stem lexicon. The golden keeps the input items of that record. In place of each result item it holds `{"sha256": <hex>}`, where `<hex>` is the SHA-256 of the Python line. `arbtok_parity` writes the C++ line of the record and compares its SHA-256. A mismatch prints the C++ line and both digests. The header of the file gives the count of hashed records as `sha256_records`. The test fails when the file holds another count. The digests apply to the goldens only. `tests/data/phoonnx_calls.jsonl.gz`, the recording that the phoonnx dumper replays, holds the transcribe results, phonemes and ids of every record in clear text, also for the records that `phoonnx.jsonl.gz` hashes.
 
 | Golden | Hashed records |
 | --- | --- |
@@ -449,7 +453,7 @@ The goldens do not hold the default stem lexicon, which is GPL-2.0-derived data,
 | diacritize | 14249: word 7304, text 372, vocalize 6573 |
 | fusion | 5678: fusion 5678 |
 | o2i_plugins | 2142: normalize 252, g2p 1890 |
-| plugin | 1355: normalize 385, transcribe 970 |
+| plugin | 1458: normalize 388, transcribe 1070 |
 | phoonnx | 1112: voice 1112 |
 
 The other 19 golden files that `tools/dump_goldens.py` writes hold no hashed record. The source record is one of the hashed records. It checks the revision, the SHA-256 of the file, and the digests of its parsed entries and shares.
@@ -510,10 +514,15 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | fusion | logprobs uses the libm `std::exp` | 5027 of 29945 |
 | fusion | the stem of one word (`كتاب`) gains a sukun, which changes only hashed records | 78 of 29945 |
 | translit | `_RAISED` maps e to a, not i | 26 of 38789 |
-| plugin | normalize never restores the marks | 1048 of 6818 (every 4th record) |
-| plugin | the full register keeps the pausal forms | 79 of 6818 (every 4th record) |
-| o2i_plugins | ArbtokSandhi drops a stress mark at the end of a word | 28 of 9609 |
-| o2i_plugins | the rescore plugin contributes no lattice rescorer | 749 of 9609 |
+| plugin | normalize never restores the marks | 1196 of 6995 (every 4th record) |
+| plugin | the full register keeps the pausal forms | 120 of 6995 (every 4th record) |
+| plugin | a Latin word ends at a curly apostrophe | 28 of 27977 |
+| plugin | the lattice diacritizer always runs in waqf | 168 of 27977 |
+| plugin | the lattice diacritizer ignores the `lexicon` option | 89 of 27977 |
+| plugin | the lattice diacritizer ignores the `dialect_lexicon` option | 5 of 27977 |
+| o2i_plugins | ArbtokSandhi drops a stress mark at the end of a word | 28 of 9637 |
+| o2i_plugins | ArbtokSandhi restores the last stress mark of a word, not the first | 24 of 9637 |
+| o2i_plugins | the rescore plugin contributes no lattice rescorer | 749 of 9637 |
 | phoonnx | normalize never restores the marks | 1242 of 2187 (every 4th record) |
 | phoonnx | the full register keeps the pausal forms | 194 of 2187 (every 4th record) |
 
@@ -588,12 +597,12 @@ These are the places where orthography2ipa.cpp at the pinned commit has no equiv
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
-| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` checks the inventory of each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. Python has no such check | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. A word whose paths hold a phoneme that the spec does not declare (ɑ, ɪ, ʊ and their long forms) raises `std::runtime_error`. 1042 of the 7971 g2p records are expected divergences |
+| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` runs `validate_rescorer_output` on each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. That check reads `declared_phonemes` (`:1069`, `:864`), which is `spec.phonemes`, or the grapheme values when that list is empty. The Python `G2P` runs no such check. Python `conformance.assert_rescorer_conforms` has the same rule over `phoneme_inventory(spec)`, a wider set | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. A word whose paths hold a phoneme of `phoneme_inventory` that `spec.phonemes` leaves out raises `std::runtime_error`. The 10 rejected symbols are ɑ, ɪ, ɑː, ʊ, oː, ʊː, ɪː, ə, ɛː and eː, and each is in `phoneme_inventory` of its lect. 1042 of the 7971 g2p records are expected divergences |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
 
 ## Expected divergences
 
-`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds 1039 entries for the 1042 g2p records of `o2i_plugins` that the rescore check of orthography2ipa.cpp stops. Three of those records repeat the line of another, and an entry covers each record with its line. With that check skipped for a result equal to its input, all 9609 o2i_plugins records give the bytes of Python. Every other golden record gives the bytes of Python.
+`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds 1039 entries for the 1042 g2p records of `o2i_plugins` that the rescore check of orthography2ipa.cpp stops. Three of those records repeat the line of another, and an entry covers each record with its line. With that check skipped for a result equal to its input, all 9637 o2i_plugins records give the bytes of Python. Every other golden record gives the bytes of Python.
 
 ## Stem lexicon
 
@@ -629,7 +638,7 @@ These differences are not reached by the goldens, or are deliberate.
 
 `o2i_plugins.py` holds the three plugins that Python registers as the entry points `orthography2ipa.normalize`, `orthography2ipa.rescore` and `orthography2ipa.sandhi`, each named `arbtok`. `arbtok::o2i_plugins::register_plugins()` registers the C++ classes with orthography2ipa.cpp under the same name. A plugin acts only where a caller or a spec names it, as in `G2P("ar", {{"normalize", {"arbtok"}}})`. orthography2ipa.cpp calls a normalize and a sandhi plugin twice, to check that it is deterministic, and the arbtok plugins are. The g2p corpus of `o2i_plugins` runs `orthography2ipa.G2P(lang, plugins=...)` with all three plugins and with each one alone: over every Arabic sdist test string under `ar`, and over 12 test strings for each supported lect.
 
-`ArbtokSandhi.apply` in arbtok 0.0.2a71 indexes the result of `apply_cross_word` by row, but that result leaves out the pause rows (`o2i_plugins.py:187-188`). A pause flag on any word but the last raises `IndexError`, so a G2P with the arbtok sandhi plugin raises on a sentence with punctuation inside it. The port raises the same `arbtok::IndexError`. 162 of the 824 sandhi records and 737 of the 7971 g2p records hold it.
+`ArbtokSandhi.apply` in arbtok 0.0.2a71 indexes the result of `apply_cross_word` by row, but that result leaves out the pause rows (`o2i_plugins.py:187-188`). A pause flag on any word but the last raises `IndexError`, so a G2P with the arbtok sandhi plugin raises on a sentence with punctuation inside it. The port raises the same `arbtok::IndexError`. 178 of the 852 sandhi records and 737 of the 7971 g2p records hold it.
 
 ### End to end: the front end of a phoonnx voice
 

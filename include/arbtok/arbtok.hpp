@@ -1,6 +1,5 @@
 // arbtok (the package): the names that the Python package re-exports at its
-// top level and that this port holds. AsrNorm, TtsNorm, normalize_asr and
-// normalize_for_tts are not ported.
+// top level, and the headers of the ported modules.
 #pragma once
 
 #include "arbtok/arabizi.hpp"
@@ -15,12 +14,15 @@
 #include "arbtok/lattice.hpp"
 #include "arbtok/lexicon.hpp"
 #include "arbtok/nisba.hpp"
+#include "arbtok/o2i_plugins.hpp"
 #include "arbtok/orthography.hpp"
+#include "arbtok/plugin.hpp"
 #include "arbtok/sandhi.hpp"
 #include "arbtok/stress.hpp"
 #include "arbtok/tashkeel.hpp"
 #include "arbtok/textnorm.hpp"
 #include "arbtok/tokenizer.hpp"
+#include "arbtok/translit.hpp"
 #include "arbtok/unicode_symbol2label.hpp"
 #include "arbtok/version.hpp"
 #include "arbtok/waqf.hpp"
@@ -31,7 +33,11 @@ namespace arbtok {
 using dialects::Lect;
 using dialects::spec_for_lang;
 using dialects::supported_lects;
+using textnorm::AsrNorm;
 using textnorm::is_arabic_lang;
+using textnorm::normalize_asr;
+using textnorm::normalize_for_tts;
+using textnorm::TtsNorm;
 
 // vocalize(text, lect): text diacritized as lect speaks it, with a record per
 // word (diacritize::diacritize).

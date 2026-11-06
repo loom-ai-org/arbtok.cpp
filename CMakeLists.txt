@@ -228,6 +228,9 @@ if(ARBTOK_BUILD_TESTS)
         endif()
     endforeach()
     set_tests_properties(parity_fusion PROPERTIES TIMEOUT 3600)
+    # A golden whose header gives no records fails: an empty dump is not a pass.
+    add_test(NAME parity_zero_count COMMAND arbtok_parity ${CMAKE_CURRENT_SOURCE_DIR}/tests/data/zero_count translit)
+    set_tests_properties(parity_zero_count PROPERTIES PASS_REGULAR_EXPRESSION "golden header gives no records")
 
     foreach(_t ensemble_parity ensemble_api)
         add_executable(${_t} tests/${_t}.cpp)

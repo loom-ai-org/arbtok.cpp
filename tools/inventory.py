@@ -62,7 +62,11 @@ def class_members(node):
         elif isinstance(item, ast.AnnAssign) and isinstance(item.target, ast.Name):
             out.append(item.target.id)
         elif isinstance(item, ast.Assign):
-            out += [t.id for t in item.targets if isinstance(t, ast.Name)]
+            for target in item.targets:
+                if isinstance(target, ast.Name) and target.id == "__slots__":
+                    out += [e.value for e in item.value.elts]
+                elif isinstance(target, ast.Name):
+                    out.append(target.id)
     return [m for m in dict.fromkeys(out) if public(m)]
 
 
