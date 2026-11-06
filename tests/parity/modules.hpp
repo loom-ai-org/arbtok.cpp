@@ -29,7 +29,11 @@
     X(dialect_lexicon)           \
     X(donor_lexicon)             \
     X(diacritize)                \
-    X(fusion)
+    X(fusion)                    \
+    X(translit)                  \
+    X(plugin)                    \
+    X(o2i_plugins)               \
+    X(phoonnx)
 
 namespace parity {
 #define ARBTOK_PARITY_DECLARE(name) std::string record_##name(const json_line::Value& line);

@@ -2,8 +2,9 @@
 
 A sequence record starts from an empty orthography2ipa lexicon registry and
 runs its steps in order: ensure_registered, lexicon_path, bundled_path, and
-register (a caller's own registration). A path is written relative to the
-package directory, or as "<other>" for a caller's file outside it.
+register (a caller's own registration). It leaves the registry empty. A path
+is written relative to the package directory, or as "<other>" for a caller's
+file outside it.
 """
 from pathlib import Path
 
@@ -52,10 +53,19 @@ def sequences():
     return out
 
 
-def run(steps):
+def clear_registry():
     o2i_lexicon._REGISTERED.clear()
     o2i_lexicon.get_lexicon.cache_clear()
-    return ["sequence", steps, [step(op, code) for op, code in steps]]
+
+
+def run(steps):
+    clear_registry()
+    try:
+        return ["sequence", steps, [step(op, code) for op, code in steps]]
+    finally:
+        # The dump runs the next modules in this process, and they must not
+        # see a registration of a sequence, such as fr-FR at a missing file.
+        clear_registry()
 
 
 def corpora():
