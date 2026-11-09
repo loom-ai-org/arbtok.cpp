@@ -2,13 +2,6 @@
 // and Python's output of one call; this recomputes the record in C++ and
 // compares the bytes.
 //
-// --divergences <file> names the records that are known not to match until
-// a dependency fix lands, with the C++ line that each one gives. A listed
-// record that gives that C++ line is counted apart. A listed record that gives
-// another C++ line is a mismatch. A listed record that matches Python, or that
-// is not in the goldens, fails the run, so that the list shrinks when the fix
-// lands.
-//
 // A golden whose dump ran the model names the CPU class of the dump in its
 // header (tests/cpu_class.hpp). On a CPU of another class the run stops with
 // that reason before it reads a record.
@@ -28,9 +21,7 @@
 #include <map>
 #include <optional>
 #include <pthread.h>
-#include <set>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "cpu_class.hpp"
@@ -41,7 +32,7 @@
 namespace {
 
 struct Tally {
-    long expected = 0, read = 0, checked = 0, mismatches = 0, divergences = 0, stale = 0, hashed = 0;
+    long expected = 0, read = 0, checked = 0, mismatches = 0, hashed = 0;
 };
 
 // The digest of a hashed record, whose line ends with {"sha256":"<64 hex digits>"}].
@@ -72,41 +63,12 @@ long header_hashed(const std::string& header) {
     return at == std::string::npos ? 0 : std::stol(header.substr(at + 17));
 }
 
-struct Divergence {
-    std::string cpp;  // the line that the C++ gives
-    std::string fix;  // the fix the record waits on
-};
-
-// (module, golden line) -> the expected C++ line and the fix.
-using Divergences = std::map<std::pair<std::string, std::string>, Divergence>;
-
-// One entry per line: module, the golden line, the C++ line, the fix it waits
-// on, separated by tabs. A line that starts with '#' is a comment. A JSON line
-// holds no tab, because JSON escapes it.
-Divergences read_divergences(const std::string& path) {
-    std::ifstream in(path);
-    if (!in) throw std::runtime_error("cannot read " + path);
-    Divergences out;
-    std::string line;
-    while (std::getline(in, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        if (line.empty() || line[0] == '#') continue;
-        if (std::count(line.begin(), line.end(), '\t') != 3)
-            throw std::runtime_error("divergence line does not have four tab-separated fields: " + line);
-        const size_t a = line.find('\t'), b = line.find('\t', a + 1), c = line.find('\t', b + 1);
-        const auto key = std::make_pair(line.substr(0, a), line.substr(a + 1, b - a - 1));
-        if (out.count(key)) throw std::runtime_error("divergence line is listed twice: " + line);
-        out[key] = {line.substr(b + 1, c - b - 1), line.substr(c + 1)};
-    }
-    return out;
-}
-
 struct Shard {
     long index = 0, count = 1;
 };
 
 Tally run(const std::string& dir, const std::string& module, std::string (*record)(const json_line::Value&),
-          const Divergences& divergences, long shown, const Shard& shard, std::ostream* mismatches) {
+          long shown, const Shard& shard, std::ostream* mismatches) {
     const std::string path = dir + "/" + module + ".jsonl.gz";
     const auto lines = json_line::read_gz_lines(path);
     Tally t;
@@ -119,14 +81,6 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
         if (!why.empty()) throw std::runtime_error(why);
     }
     std::map<std::string, long> by_function;
-    // The listed lines the whole file holds: a listed divergence is stale only
-    // when the file lacks it, whichever shard runs.
-    std::set<std::string> seen;
-    for (const auto& [key, divergence] : divergences)
-        if (key.first == module) seen.insert(key.second);
-    std::set<std::string> present;
-    for (size_t i = 1; i < lines.size(); ++i)
-        if (seen.count(lines[i])) present.insert(lines[i]);
     for (size_t i = 1; i < lines.size(); ++i) {
         ++t.read;
         const std::optional<std::string> digest = record_digest(lines[i]);
@@ -142,28 +96,7 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
         }
         ++t.checked;
         const std::string got_digest = digest ? sha256::hex(got) : std::string();
-        const bool same = digest ? got_digest == *digest : got == lines[i];
-        const auto listed = divergences.find({module, lines[i]});
-        if (listed != divergences.end()) {
-            const Divergence& d = listed->second;
-            if (same) {
-                ++t.stale;
-                std::cerr << "LISTED DIVERGENCE NOW MATCHES " << module << " (" << d.fix
-                          << "): remove it from the list\n  python: " << lines[i].substr(0, 3000) << "\n";
-                continue;
-            }
-            if (got == d.cpp) {
-                ++t.divergences;
-                std::cerr << "EXPECTED DIVERGENCE " << module << " (" << d.fix << ")\n  python: "
-                          << lines[i].substr(0, 3000) << "\n  c++:    " << got.substr(0, 3000) << "\n";
-                continue;
-            }
-            std::cerr << "LISTED DIVERGENCE GIVES ANOTHER C++ LINE " << module << " (" << d.fix
-                      << ")\n  python: " << lines[i].substr(0, 3000) << "\n  listed: " << d.cpp.substr(0, 3000)
-                      << "\n  c++:    " << got.substr(0, 3000) << "\n";
-        } else if (same) {
-            continue;
-        }
+        if (digest ? got_digest == *digest : got == lines[i]) continue;
         if (mismatches != nullptr) *mismatches << lines[i] << "\n";
         ++by_function[v.size() ? v[0].str : "?"];
         if (++t.mismatches <= shown) {
@@ -173,22 +106,13 @@ Tally run(const std::string& dir, const std::string& module, std::string (*recor
                 std::cerr << "  python sha256: " << *digest << "\n  c++ sha256:    " << got_digest << "\n";
         }
     }
-    for (const auto& [key, divergence] : divergences) {
-        if (key.first == module && !present.count(key.second)) {
-            ++t.stale;
-            std::cerr << "LISTED DIVERGENCE NOT IN THE GOLDENS " << module << " (" << divergence.fix
-                      << ")\n  python: "
-                      << key.second.substr(0, 3000) << "\n";
-        }
-    }
     if (t.hashed != expected_hashed) {
         ++t.mismatches;
         std::cerr << "HASHED RECORD COUNT " << module << ": the header gives " << expected_hashed << ", the file holds "
                   << t.hashed << "\n";
     }
     std::cout << module << ": " << t.expected << " in, " << t.checked << " checked, " << t.mismatches
-              << " mismatches, " << t.divergences << " expected divergences, " << t.stale << " stale entries, "
-              << t.hashed << " hashed records\n";
+              << " mismatches, " << t.hashed << " hashed records\n";
     for (const auto& [fn, n] : by_function) std::cout << "  " << fn << ": " << n << " mismatches\n";
     return t;
 }
@@ -203,19 +127,12 @@ const std::vector<std::string>& module_names() {
 struct Options {
     std::string dir;
     std::vector<std::string> modules;  // empty: every module
-    Divergences divergences;
     long shown = 10;  // mismatches printed per module
     Shard shard;
     std::string mismatches;  // empty: do not write them
 };
 
 int run_all(const Options& opt) {
-    for (const auto& [key, divergence] : opt.divergences) {
-        const auto& names = module_names();
-        if (std::find(names.begin(), names.end(), key.first) == names.end())
-            throw std::runtime_error("divergence row names an unknown module \"" + key.first + "\" (" +
-                                     divergence.fix + ")");
-    }
     auto selected = [&](const std::string& name) {
         return opt.modules.empty() || std::find(opt.modules.begin(), opt.modules.end(), name) != opt.modules.end();
     };
@@ -228,19 +145,17 @@ int run_all(const Options& opt) {
     Tally total;
 #define ARBTOK_PARITY_RUN(name)                                                  \
     if (selected(#name)) {                                                          \
-        const Tally t = run(opt.dir, #name, parity::record_##name, opt.divergences, opt.shown, opt.shard, mismatches); \
+        const Tally t = run(opt.dir, #name, parity::record_##name, opt.shown, opt.shard, mismatches); \
         total.expected += t.expected;                                               \
         total.read += t.read;                                                       \
         total.checked += t.checked;                                                 \
         total.mismatches += t.mismatches;                                           \
-        total.divergences += t.divergences;                                         \
-        total.stale += t.stale;                                                     \
     }
     ARBTOK_PARITY_MODULES(ARBTOK_PARITY_RUN)
 #undef ARBTOK_PARITY_RUN
     std::cout << "goldens: " << total.expected << " in, " << total.checked << " checked, " << total.mismatches
-              << " mismatches, " << total.divergences << " expected divergences, " << total.stale << " stale entries\n";
-    return (total.read == total.expected && total.mismatches == 0 && total.stale == 0) ? 0 : 1;
+              << " mismatches\n";
+    return (total.read == total.expected && total.mismatches == 0) ? 0 : 1;
 }
 
 int run_guarded(const Options& opt) {
@@ -254,15 +169,14 @@ int run_guarded(const Options& opt) {
 
 }  // namespace
 
-// usage: arbtok_parity <goldens dir> [--divergences <file>] [--stack-kb <n>] [--show <n>] [--shard <k>/<n>]
+// usage: arbtok_parity <goldens dir> [--stack-kb <n>] [--show <n>] [--shard <k>/<n>]
 //        [--stride <n>] [--mismatches <file>] [module ...]
 // --stack-kb runs the records on a thread with that stack size, to show that
 // the matchers do not need a stack that grows with the subject. --show sets
 // how many mismatches each module prints (10 by default). --stride <n> checks
 // only every n-th record, for the slow sanitizer builds: it is --shard 0/<n>.
-// A listed divergence of a record that is not checked is neither counted nor
-// stale. The run reads every record and fails if the file holds fewer than
-// its header count.
+// The run reads every record and fails if the file holds fewer than its
+// header count.
 int main(int argc, char** argv) {
     Options opt;
     size_t stack_kb = 0;
@@ -270,12 +184,10 @@ int main(int argc, char** argv) {
     try {
         for (int i = 1; i < argc; ++i) {
             const std::string a = argv[i];
-            if ((a == "--divergences" || a == "--stack-kb" || a == "--show" || a == "--shard" ||
+            if ((a == "--stack-kb" || a == "--show" || a == "--shard" ||
                  a == "--stride" || a == "--mismatches") &&
                 i + 1 < argc) {
-                if (a == "--divergences") {
-                    opt.divergences = read_divergences(argv[++i]);
-                } else if (a == "--mismatches") {
+                if (a == "--mismatches") {
                     opt.mismatches = argv[++i];
                 } else if (a == "--stack-kb") {
                     stack_kb = std::stoul(argv[++i]);
@@ -300,7 +212,7 @@ int main(int argc, char** argv) {
         return 1;
     }
     if (rest.empty()) {
-        std::cerr << "usage: arbtok_parity <goldens dir> [--divergences <file>] [--stack-kb <n>] [--show <n>] "
+        std::cerr << "usage: arbtok_parity <goldens dir> [--stack-kb <n>] [--show <n>] "
                      "[--shard <k>/<n>] [--stride <n>] [--mismatches <file>] [module ...]\n";
         return 2;
     }
