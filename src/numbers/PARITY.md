@@ -1,17 +1,17 @@
 # arbtok_numbers parity
 
-`arbtok_numbers` holds the parts of three Python libraries that arbtok 0.0.2a71 calls, for Arabic. For each
+`arbtok_numbers` holds the parts of three Python libraries that arbtok 0.0.2a74 calls, for Arabic. For each
 call it gives the same bytes as the reference, and the same Python exception class where the reference raises.
 
 ## Reference
 
 | Package | Version |
 | --- | --- |
-| arbtok | 0.0.2a71 |
+| arbtok | 0.0.2a74 |
 | ovos-number-parser | 0.24.3a1 |
 | ovos-date-parser | 0.35.7a1 |
 | unicode-rbnf | 2.4.1 |
-| orthography2ipa | 7.119.10a1 |
+| orthography2ipa | 7.122.20a2 |
 | chronologia | 0.31.7a2 |
 | dateparser | 1.5.0 |
 | Python | 3.12.13 |
@@ -20,13 +20,25 @@ Build the reference interpreter with uv:
 
 ```sh
 unset VIRTUAL_ENV
-uv venv --python 3.12 venv
-uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orthography2ipa==7.119.10a1 \
+uv venv --python 3.12.13 venv
+uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a74 orthography2ipa==7.122.20a2 \
     linguatag==0.1.5a1 langcodes==3.5.1 ovos-spec-tools==1.17.1a1 ovos-number-parser==0.24.3a1 \
-    ovos-date-parser==0.35.7a1 unicode-rbnf==2.4.1 chronologia==0.31.7a2 dateparser==1.5.0
+    ovos-date-parser==0.35.7a1 unicode-rbnf==2.4.1 chronologia==0.31.7a2 dateparser==1.5.0 \
+    onnxruntime==1.31.1 numpy==2.5.4
 ```
 
-The committed numbers goldens name orthography2ipa 7.114.16a1 in their header, and a dump under 7.119.10a1 gives the same records. The three numbers dumpers do not run at this commit: they call `common.write` without its `stem_free` argument and raise `TypeError`.
+The dumpers stop when an installed version differs from `PINNED` or `RUNTIME` in `tools/goldens/common.py`.
+
+Dump the three numbers goldens with that interpreter, from the repository root:
+
+```sh
+venv/bin/python -I tools/goldens/numbers_ar.py build tests/goldens/numbers_calls.jsonl.gz tests/goldens/numbers_ar.jsonl.gz
+venv/bin/python -I tools/goldens/dates_ar.py tests/goldens/numbers_calls.jsonl.gz data/numbers/holidays_ar.json \
+    tests/goldens/numbers_dates_ar.jsonl.gz
+venv/bin/python -I tools/goldens/numbers_dispatch.py tests/goldens/numbers_dispatch.jsonl.gz
+```
+
+The results of these records do not come from orthography2ipa. `numbers_ar` takes its lect codes from `arbtok.dialects`, which calls orthography2ipa, so a registry change can change the input grid of `numbers_ar`. `tools/dump_model_goldens.sh --check` runs the three dumpers and fails when one of them stops with an error or writes other records than the committed file.
 
 ## Ported functions
 
@@ -77,6 +89,8 @@ interpreter, written by `data/numbers/gen_unicode_tables.py`. The library compil
 `tools/goldens/numbers_ar.py` and `tools/goldens/dates_ar.py` write `tests/goldens/numbers_ar.jsonl.gz` and
 `tests/goldens/numbers_dates_ar.jsonl.gz` from the reference. Their inputs are the calls arbtok's own test suite
 makes into the libraries, recorded in `tests/goldens/numbers_calls.jsonl.gz`, and generated grids.
+`numbers_ar.py record` records the calls with pytest. It needs pandas, pyarrow and network access to the
+Hugging Face Hub: without them the live test of `tests/test_iqraeval_benchmark.py` skips, and 39 calls are missing.
 `tools/goldens/numbers_dispatch.py` writes `tests/goldens/numbers_dispatch.jsonl.gz`: 11 calls of the entry
 points for each of 1894 language tags, each with the route that `tools/goldens/routes.py` saw the reference
 take. A record of route `arabic` or `rejected` holds the reference result, and a record of route `module` must
@@ -89,7 +103,7 @@ build, it checks every n-th record and still counts every record of the file.
 
 | Golden | Records | ctest target |
 | --- | --- | --- |
-| `numbers_ar.jsonl.gz` | 184107 | `numbers_ar_parity` |
+| `numbers_ar.jsonl.gz` | 184111 | `numbers_ar_parity` |
 | `numbers_dates_ar.jsonl.gz` | 55038 | `numbers_dates_ar_parity` |
 | `numbers_dispatch.jsonl.gz` | 20834: arabic 9722, module 6644, rejected 4468 | `numbers_dispatch_parity` |
 

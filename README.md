@@ -4,7 +4,7 @@ A C++17 port of [arbtok](https://github.com/TigreGotico/arbtok), rule-based Arab
 
 The port holds the rule modules (constants, orthography, nisba, waqf, arabizi, unicode_symbol2label, stress, sandhi, lattice, tokenizer, dialects, version), the text normalization of textnorm and util, and the diacritizers: the rawi ensemble on onnxruntime, `tashkeel`, the lattice-guarded `diacritize` with `arbtok::vocalize`, `fusion`, and the stem, dialect and donor lexicons. textnorm and util speak and read numbers, dates and times in Arabic only. Where the Python package speaks such a form with the module of another language, the call raises `arbtok::NotPortedError`. Where the reference libraries reject a language, the call gives the Python result.
 
-The port also holds the loanword reader `translit`, the G2P class `arbtok::plugin::ArbtokG2PPlugin` that the phoonnx arbtok phonemizer calls, and the three orthography2ipa plugins of `o2i_plugins`. `arbtok::o2i_plugins::register_plugins()` registers them with orthography2ipa.cpp under the name `arbtok`, as the Python entry points do. `espeak_wrapper` is not ported, because no phoonnx voice path calls it.
+The port also holds the loanword reader `translit`, the G2P class `arbtok::plugin::ArbtokG2PPlugin` that the phoonnx arbtok phonemizer calls, and the three orthography2ipa plugins of `o2i_plugins`. `arbtok::o2i_plugins::register_plugins()` registers them with orthography2ipa.cpp under the name `arbtok`, as the Python entry points do. `arbtok::o2i_plugins::pipeline()` gives the same steps as one orthography2ipa `Pipeline`. `espeak_wrapper` is not ported, because no phoonnx voice path calls it.
 
 ## Build
 
@@ -45,6 +45,15 @@ arbtok::plugin::ArbtokG2PPlugin g2p({"ar-EG"});
 g2p.lang;                           // "arz-EG"
 g2p.transcribe("السلام عليكم");    // "assaˈlaːm ʕaˈleːkum"
 
+orthography2ipa::G2P o2i("ar", {}, "", false, true, true, true, nullptr, nullptr,
+                         arbtok::o2i_plugins::pipeline("ar"));
+o2i.transcribe("السلام عليكم");    // "assaˈlaːm ʕaˈlajkum"
+o2i.transcribe("كتب");             // "ˈkatab"
+```
+
+The named plugins give the same steps. orthography2ipa documents the `plugin_overrides` argument of `G2P` as deprecated, as Python does for `plugins=`:
+
+```cpp
 arbtok::o2i_plugins::register_plugins();
 orthography2ipa::G2P o2i("ar", {{"normalize", {"arbtok"}}, {"sandhi", {"arbtok"}}});
 o2i.transcribe("السلام عليكم");    // "assaˈlaːm ʕaˈlajkum"
@@ -70,10 +79,12 @@ To dump the goldens again, install the reference versions that `PARITY.md` names
 
 ```sh
 HF_HUB_OFFLINE=1 python -I tools/dump_goldens.py --out-dir tests/goldens \
-    --sdist-tests <arbtok-0.0.2a71 sdist>/tests --gold-dir <arbtok repository at the gold commit>/data \
+    --sdist-tests <arbtok-0.0.2a74 sdist>/tests --gold-dir <arbtok repository at the gold commit>/data \
     --corpus <arbtok repository at the gold commit>/tests/ar_test.txt
 ```
 
 The dumper runs the corpora a second time with an empty stem lexicon, and writes each record that depends on the stem lexicon as the SHA-256 of its line (see `PARITY.md`). The dumper stops when an installed reference package has another version than `PARITY.md` names. It prints the input count and the record count of each corpus. It counts the records again in each file it writes, and stops when the counts differ. `tools/inventory.py` writes the surface table of `PARITY.md` and fails when a name marked as ported is missing from its header.
 
-The textnorm and util dumpers also replay the calls that the sdist tests make, which `tests/data/textnorm_calls.jsonl.gz` holds. `tools/goldens/record_calls.py` records them again. It needs pytest in the same venv, and its docstring gives the command.
+The three numbers goldens come from their own dumpers under `tools/goldens`, and `src/numbers/PARITY.md` gives their commands.
+
+The textnorm and util dumpers also replay the calls that the sdist tests make, which `tests/data/textnorm_calls.jsonl.gz` holds. `tools/goldens/record_calls.py` records them again. It needs pytest, pandas and pyarrow in the same venv and network access to the Hugging Face Hub, and its docstring gives the command.

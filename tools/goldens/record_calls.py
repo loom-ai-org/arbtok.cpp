@@ -15,7 +15,9 @@ normalize_for_tts are recorded only where a test calls them, not where they
 call themselves. util.normalize is recorded at every depth, because
 normalize_for_tts calls it. The lines are written sorted.
 
-Run it with an interpreter that has the reference packages and pytest:
+Run it with an interpreter that has the reference packages, pytest, pandas and
+pyarrow, and with network access to the Hugging Face Hub. Without them the live
+test of tests/test_iqraeval_benchmark.py skips, and its calls are not recorded:
     python -I tools/goldens/record_calls.py --sdist-tests <sdist>/tests --overlay <repo at the gold commit> --scratch <dir> --out tests/data/textnorm_calls.jsonl.gz
 
 The sdist leaves out tests/voice_agent.py and other helpers that some tests

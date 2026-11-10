@@ -16,8 +16,7 @@ and for tags that resolve through the parent chain. A table is written by name:
 the constants corpus writes the items of each named table.
 """
 from arbtok import translit
-from arbtok.donor_lexicon import ensure_registered
-from orthography2ipa import G2P
+from arbtok.donor_lexicon import donor_engine
 
 from . import common
 
@@ -58,8 +57,7 @@ def words():
 
 
 def english_readings(ws):
-    ensure_registered("en-GB")
-    g = G2P("en-GB")
+    g = donor_engine("en-GB")
     out = []
     for w in ws:
         try:

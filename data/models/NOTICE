@@ -1,5 +1,5 @@
 rawi_ensemble.logits.int8.onnx and rawi_v2.vocab.json are byte copies of
-arbtok/models/ in the arbtok 0.0.2a71 wheel on PyPI.
+arbtok/models/ in the arbtok 0.0.2a74 wheel on PyPI.
 
   rawi_ensemble.logits.int8.onnx  sha256 bceeed6a1a4e897ee5bec37502ea327b20927595a9d92e82ff1f885c50e282d0
   rawi_v2.vocab.json              sha256 5a8972bc1c5985092973d543d8b04f4c9317b2d11625c242420baf69bb4bf037

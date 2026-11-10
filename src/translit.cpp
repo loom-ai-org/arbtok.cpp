@@ -358,10 +358,9 @@ std::optional<std::string> transliterate(const std::string& word, const std::str
     // An established loan is the Arabic word already, returned as it stands.
     if (auto settled = detail::established(word, donor)) return settled;
 
-    donor_lexicon::ensure_registered(donor);
     std::string donor_ipa;
     try {
-        donor_ipa = o2i::G2P(donor).transcribe_word(word);
+        donor_ipa = donor_lexicon::donor_engine(donor)->transcribe_word(word);
     } catch (const std::exception&) {
         return std::nullopt;
     }

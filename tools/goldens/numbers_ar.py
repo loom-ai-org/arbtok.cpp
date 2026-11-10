@@ -1,7 +1,7 @@
 """Golden records for the Arabic number functions arbtok calls.
 
 The gold comes from the Python reference: ovos-number-parser and unicode-rbnf,
-at the versions arbtok 0.0.2a71 resolves to. Each output line is a JSON record
+at the versions arbtok 0.0.2a74 resolves to. Each output line is a JSON record
 [kind, arguments..., result]. A result is a string, a bool, {"int": digits},
 {"float": repr}, or {"err": "<Python exception class>"}. A record whose kind
 ends in "_block" holds the SHA-256 of the results of a whole range, one JSON
@@ -14,7 +14,9 @@ integer from 0 to 10**6 in each case, gender and lect arbtok passes, powers of
 ten, negatives, floats, fractions, every lect code arbtok knows, and random
 sequences of the number vocabulary.
 
-Usage, with the reference interpreter:
+Usage, with the reference interpreter. The record command also needs pytest,
+pandas and pyarrow, and network access to the Hugging Face Hub, so that the live
+test of tests/test_iqraeval_benchmark.py runs:
     python -I tools/goldens/numbers_ar.py record <arbtok checkout> tests/goldens/numbers_calls.jsonl.gz
     python -I tools/goldens/numbers_ar.py build tests/goldens/numbers_calls.jsonl.gz \\
         tests/goldens/numbers_ar.jsonl.gz [--jobs N]
@@ -500,7 +502,9 @@ def build(calls_path, out_path, jobs):
     print(f"tasks in: {n_tasks} ({len(recorded)} recorded, {len(grids)} grid, {len(blocks)} blocks); "
           f"dropped as not routed to Arabic: {dropped}; repeats: {duplicates}; records out: {len(records)}",
           file=sys.stderr)
-    common.write(out_path, "numbers_ar", [("numbers", n_tasks - dropped - duplicates, records)])
+    # No record reads the stem lexicon, so the stem-free dump is the records themselves.
+    common.write(out_path, "numbers_ar", [("numbers", n_tasks - dropped - duplicates, records)],
+                 [common.dumps(r) for r in records])
 
 
 def main():

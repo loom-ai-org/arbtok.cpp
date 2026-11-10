@@ -1,7 +1,6 @@
 #include "arbtok/o2i_plugins.hpp"
 
 #include <algorithm>
-#include <cstdlib>
 #include <optional>
 
 #include "arbtok/diacritize.hpp"
@@ -10,6 +9,7 @@
 #include "arbtok/fusion.hpp"
 #include "arbtok/lattice.hpp"
 #include "arbtok/sandhi.hpp"
+#include "arbtok/textnorm.hpp"
 #include "detail.hpp"
 #include "unicode_norm.hpp"
 
@@ -28,20 +28,16 @@ std::vector<std::string> arabic_codes() {
     return out;
 }
 
-// _path(): ARBTOK_DIACRITIZER stripped and lowercased, "lattice" when unset.
-std::string diacritizer_path() {
-    const char* env = std::getenv("ARBTOK_DIACRITIZER");
-    U32 value = u(env ? env : "lattice");
-    while (!value.empty() && arbtok::detail::is_space(value.back())) value.pop_back();
-    std::size_t start = 0;
-    while (start < value.size() && arbtok::detail::is_space(value[start])) ++start;
-    const std::string want = s8(arbtok::detail::lower(value.substr(start)));
-    for (const auto& path : ArbtokDiacritizer::PATHS)
-        if (want == path) return want;
-    throw ValueError("ARBTOK_DIACRITIZER=" + arbtok::detail::py_str_repr(u(want)) +
-                     " is not one of ('lattice', 'fusion'). Refusing rather than falling back: a typo that "
-                     "silently kept the default would read exactly like the setting working.");
+// _base(text): text in NFD, without its combining marks.
+U32 base(const U32& text) {
+    U32 out;
+    for (char32_t c : arbtok::detail::nfd(text))
+        if (!arbtok::detail::is_nonspacing_mark(c)) out += c;
+    return out;
 }
+
+// c is in diacritize._MARKS.
+bool is_mark(char32_t c) { return (c >= 0x064B && c <= 0x0653) || c == 0x0670; }
 
 }  // namespace
 
@@ -52,20 +48,25 @@ struct ArbtokDiacritizer::Reader {
     std::unique_ptr<diacritize::LatticeDiacritizer> lattice;
 };
 
-ArbtokDiacritizer::ArbtokDiacritizer() = default;
+ArbtokDiacritizer::ArbtokDiacritizer(std::string path_) : path(std::move(path_)) {
+    if (std::find(PATHS.begin(), PATHS.end(), path) == PATHS.end())
+        throw ValueError("path=" + arbtok::detail::py_str_repr(u(path)) +
+                         " is not one of ('lattice', 'fusion'). Refusing rather than falling back: a typo that "
+                         "silently kept the default would read exactly like the setting working.");
+}
+
 ArbtokDiacritizer::~ArbtokDiacritizer() = default;
 
 std::string ArbtokDiacritizer::normalize(const std::string& text, const std::string& lang) const {
-    const auto key = std::make_pair(lang, diacritizer_path());
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = by_lang_.find(key);
+    auto it = by_lang_.find(lang);
     if (it == by_lang_.end()) {
         auto reader = std::make_unique<Reader>();
-        if (key.second == "fusion")
+        if (path == "fusion")
             reader->fusion = std::make_unique<fusion::FusionDiacritizer>(lang);
         else
             reader->lattice = std::make_unique<diacritize::LatticeDiacritizer>(lang);
-        it = by_lang_.emplace(key, std::move(reader)).first;
+        it = by_lang_.emplace(lang, std::move(reader)).first;
     }
     Reader& r = *it->second;
     return r.fusion ? r.fusion->diacritize(text) : r.lattice->diacritize(text);
@@ -116,25 +117,13 @@ std::vector<std::string> ArbtokSandhi::apply(const std::vector<std::string>& wor
     }
     // A pause is a punctuation token in arbtok and a flag in orthography2ipa.
     std::vector<sandhi::CrossWord> rows;
-    std::vector<bool> is_pause;
     const std::size_t n = std::min({stripped.size(), surfaces.size(), pausal.size()});
     for (std::size_t i = 0; i < n; ++i) {
         rows.push_back({stripped[i], surfaces[i], false});
-        is_pause.push_back(false);
-        if (pausal[i]) {
-            rows.push_back({"", "", true});
-            is_pause.push_back(true);
-        }
+        if (pausal[i]) rows.push_back({"", "", true});
     }
-    // apply_cross_word gives the words without the pause rows, and Python
-    // indexes that list by row: a pause before a word raises IndexError.
-    const auto out = sandhi::apply_cross_word(rows, true, lang);
-    std::vector<std::string> rewritten;
-    for (std::size_t i = 0; i < rows.size(); ++i) {
-        if (is_pause[i]) continue;
-        if (i >= out.size()) throw IndexError("list index out of range");
-        rewritten.push_back(out[i]);
-    }
+    // apply_cross_word gives one word for each row that is not a pause.
+    const auto rewritten = sandhi::apply_cross_word(rows, true, lang);
     std::vector<std::string> restored;
     for (std::size_t w = 0; w < rewritten.size() && w < marks.size(); ++w) {
         const U32 word = u(rewritten[w]);
@@ -149,6 +138,51 @@ std::vector<std::string> ArbtokSandhi::apply(const std::vector<std::string>& wor
 }
 
 std::vector<std::string> ArbtokSandhi::language_codes() const { return arabic_codes(); }
+
+namespace detail {
+
+std::string keep_letters(const std::string& original, const std::string& proposed) {
+    const U32 orig = u(original), prop = u(proposed);
+    if (base(orig) == base(prop)) return proposed;
+    const U32 letters = u(diacritize::strip_marks(original));
+    if (letters.size() != u(diacritize::strip_marks(proposed)).size()) return original;
+    U32 kept;
+    std::size_t i = 0;
+    for (char32_t c : prop) {
+        if (is_mark(c)) {
+            kept += c;
+            continue;
+        }
+        kept += base(U32(1, c)) == base(U32(1, letters[i])) ? c : letters[i];
+        ++i;
+    }
+    return base(kept) == base(orig) ? s8(kept) : original;
+}
+
+}  // namespace detail
+
+o2i::Pipeline pipeline(const std::string& lang, const std::string& path) {
+    const auto diacritizer = std::make_shared<const ArbtokDiacritizer>(path);
+    // The words of the proposal must align with the written words: when the
+    // diacritizer changes their count, each written word is marked alone.
+    auto mark = [diacritizer, lang](const std::string& text) {
+        const U32 space = U" ";
+        const auto written = arbtok::detail::split(u(text), space);
+        auto marked = arbtok::detail::split(u(diacritizer->normalize(text, lang)), space);
+        if (marked.size() != written.size()) {
+            marked.clear();
+            for (const auto& w : written) marked.push_back(w.empty() ? w : u(diacritizer->normalize(s8(w), lang)));
+        }
+        std::vector<U32> out;
+        for (std::size_t i = 0; i < written.size(); ++i)
+            out.push_back(u(detail::keep_letters(s8(written[i]), s8(marked[i]))));
+        return s8(arbtok::detail::join(out, space));
+    };
+    auto expand = [lang](const std::string& text) { return textnorm::normalize_for_tts(text, lang); };
+    // The members in order: lexicon, syllabifier, expand, mark, rescore, sandhi.
+    return o2i::Pipeline{std::nullopt, nullptr, expand, mark, lattice::default_rescorers(),
+                         std::make_shared<const ArbtokSandhi>()};
+}
 
 void register_plugins() {
     o2i::register_normalize_plugin("arbtok", std::make_shared<ArbtokDiacritizer>());

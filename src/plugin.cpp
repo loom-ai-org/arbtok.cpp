@@ -124,9 +124,8 @@ namespace detail {
 
 bool donor_knows(const std::string& token) {
     try {
-        donor_lexicon::ensure_registered(translit::DONOR_LANG);
         const std::string lowered = s8(arbtok::detail::lower(u(token)));
-        const std::string got = o2i::G2P(translit::DONOR_LANG).transcribe_word(lowered);
+        const std::string got = donor_lexicon::donor_engine(translit::DONOR_LANG)->transcribe_word(lowered);
         // Stress off, and the IPA symbols that only look like their ASCII
         // letter folded back to it.
         U32 bare;
