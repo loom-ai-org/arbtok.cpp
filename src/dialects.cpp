@@ -1,7 +1,6 @@
 #include "arbtok/dialects.hpp"
 
 #include <orthography2ipa/langcodes.hpp>
-#include <orthography2ipa/linguatag.hpp>
 #include <orthography2ipa/orthography2ipa.hpp>
 
 #include <algorithm>
@@ -57,10 +56,6 @@ const std::string* find(const OrderedMap& map, const std::string& key) {
 
 namespace {
 
-// registry.py's alias, renamed-key and region-default tables, as the
-// orthography2ipa C++ port generates them from the reference.
-#include "registry_tables.inc"
-
 std::string py_lower(const std::string& s) { return u::s8(u::lower(u::u(s))); }
 
 // The spec's iso639_3, or nullopt for None. orthography2ipa's C++ loader keeps
@@ -68,59 +63,6 @@ std::string py_lower(const std::string& s) { return u::s8(u::lower(u::u(s))); }
 std::optional<std::string> declared_iso639_3(const o2i::LanguageSpec& spec) {
     if (spec.iso639_3.empty() || spec.iso639_3 == "null") return std::nullopt;
     return spec.iso639_3;
-}
-
-// registry.py _PRIVATE_USE: "-x-", case-insensitive.
-bool has_private_use(const std::string& code) {
-    for (size_t at = 0; at + 3 <= code.size(); ++at)
-        if (code[at] == '-' && (code[at + 1] == 'x' || code[at + 1] == 'X') && code[at + 2] == '-') return true;
-    return false;
-}
-
-template <size_t N>
-const char* find_in(const std::pair<const char*, const char*> (&table)[N], const std::string& key) {
-    for (const auto& entry : table)
-        if (key == entry.first) return entry.second;
-    return nullptr;
-}
-
-const std::vector<std::string>& catalog() {
-    static const std::vector<std::string> codes = [] {
-        std::vector<std::string> out = o2i::available_codes(true);
-        std::sort(out.begin(), out.end());
-        return out;
-    }();
-    return codes;
-}
-
-bool in_catalog(const std::string& code) {
-    const auto& codes = catalog();
-    return std::binary_search(codes.begin(), codes.end(), code);
-}
-
-// registry.py _resolve_code(code, allow_nearest=False).
-std::string resolve_without_nearest(const std::string& code_in) {
-    if (const char* hit = find_in(_ALIASES, code_in)) return hit;
-    if (in_catalog(code_in)) return code_in;
-    std::string code = code_in;
-    if (!has_private_use(code) && code.rfind("x-", 0) != 0) {
-        if (auto standardized = o2i::langcodes::try_standardize_tag(code, true)) code = *standardized;
-        if (const char* hit = find_in(_ALIASES, code)) return hit;
-    }
-    if (in_catalog(code)) return code;
-    if (has_private_use(code)) {
-        const std::string folded = py_lower(code);
-        for (const auto& [known, target] : _ALIASES)
-            if (py_lower(known) == folded) return target;
-        for (const auto& known : catalog())
-            if (py_lower(known) == folded) return known;
-    }
-    if (code.find('-') == std::string::npos) {
-        const std::string fallback = o2i::linguatag::with_default_region(code);
-        if (in_catalog(fallback)) return fallback;
-    }
-    if (const char* hit = find_in(_REGION_DEFAULTS, code)) return hit;
-    return code;
 }
 
 bool contains(const std::vector<std::string>& codes, const std::string& code) {
@@ -170,7 +112,7 @@ std::optional<std::string> exact_spec(const std::string& tag, const std::vector<
 
 namespace detail {
 
-bool resolves_exactly(const std::string& code) { return in_catalog(resolve_without_nearest(code)); }
+bool resolves_exactly(const std::string& code) { return o2i::resolves_exactly(code); }
 
 std::pair<std::string, int> closest_match(const std::string& desired_in, const std::vector<std::string>& supported) {
     if (contains(supported, desired_in)) return {desired_in, 0};

@@ -34,7 +34,7 @@ import unicodedata
 #: resolve with arbtok and orthography2ipa under `uv --prerelease=allow`. They decide how a language tag
 #: resolves, so a re-dump with other versions can change the dialects records. The number and date
 #: parsers are the versions that the textnorm and util records speak with and that src/numbers ports.
-PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.114.16a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
+PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.119.10a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
           "ovos-spec-tools": "1.17.1a1", "ovos-number-parser": "0.24.3a1", "ovos-date-parser": "0.35.7a1",
           "unicode-rbnf": "2.4.1", "chronologia": "0.31.7a2", "dateparser": "1.5.0"}
 #: The packages that compute the model output and the log-probabilities: onnxruntime is the version of the C++

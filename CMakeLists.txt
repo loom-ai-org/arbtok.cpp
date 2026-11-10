@@ -107,7 +107,7 @@ target_include_directories(arbtok
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
-# dialects.cpp reads orthography2ipa's registry tables (src/registry_tables.inc).
+# fusion.cpp reads orthography2ipa's py_float.hpp from its src/ directory.
 target_include_directories(arbtok PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/third_party/orthography2ipa.cpp/src)
 # dialects.hpp and lattice.hpp hand out orthography2ipa types, so
 # orthography2ipa is part of the public interface.
@@ -202,27 +202,25 @@ if(ARBTOK_BUILD_TESTS)
     # another class, tools/dump_model_goldens.sh writes a directory that holds
     # them dumped on this CPU, and this variable names it.
     set(ARBTOK_GOLDENS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/tests/goldens CACHE PATH "The directory of the golden files")
-    set(_divergences --divergences ${CMAKE_CURRENT_SOURCE_DIR}/tests/parity/expected_divergences.tsv)
     set(_sharded dialects diacritize)
     set(_parity_tests)
     foreach(_module IN LISTS _parity_modules)
         if(_module STREQUAL "fusion")
-            add_test(NAME parity_fusion COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
-                     ${_divergences} fusion)
+            add_test(NAME parity_fusion COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR} fusion)
             list(APPEND _parity_tests parity_fusion)
         elseif(NOT _module IN_LIST _sharded)
             add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
-                     ${_divergences} --stride ${ARBTOK_PARITY_STRIDE} ${_module})
+                     --stride ${ARBTOK_PARITY_STRIDE} ${_module})
             list(APPEND _parity_tests parity_${_module})
         elseif(ARBTOK_PARITY_STRIDE GREATER 1)
             math(EXPR _shard_stride "${ARBTOK_PARITY_STRIDE} * 8")
             add_test(NAME parity_${_module} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
-                     ${_divergences} --stride ${_shard_stride} ${_module})
+                     --stride ${_shard_stride} ${_module})
             list(APPEND _parity_tests parity_${_module})
         else()
             foreach(_k RANGE 7)
                 add_test(NAME parity_${_module}_${_k} COMMAND arbtok_parity ${ARBTOK_GOLDENS_DIR}
-                         ${_divergences} --shard ${_k}/8 ${_module})
+                         --shard ${_k}/8 ${_module})
                 list(APPEND _parity_tests parity_${_module}_${_k})
             endforeach()
         endif()

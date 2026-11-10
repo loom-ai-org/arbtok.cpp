@@ -11,7 +11,7 @@ call it gives the same bytes as the reference, and the same Python exception cla
 | ovos-number-parser | 0.24.3a1 |
 | ovos-date-parser | 0.35.7a1 |
 | unicode-rbnf | 2.4.1 |
-| orthography2ipa | 7.114.16a1 |
+| orthography2ipa | 7.119.10a1 |
 | chronologia | 0.31.7a2 |
 | dateparser | 1.5.0 |
 | Python | 3.12.13 |
@@ -21,10 +21,12 @@ Build the reference interpreter with uv:
 ```sh
 unset VIRTUAL_ENV
 uv venv --python 3.12 venv
-uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orthography2ipa==7.114.16a1 \
+uv pip install --python venv/bin/python --prerelease=allow arbtok==0.0.2a71 orthography2ipa==7.119.10a1 \
     linguatag==0.1.5a1 langcodes==3.5.1 ovos-spec-tools==1.17.1a1 ovos-number-parser==0.24.3a1 \
     ovos-date-parser==0.35.7a1 unicode-rbnf==2.4.1 chronologia==0.31.7a2 dateparser==1.5.0
 ```
+
+The committed numbers goldens name orthography2ipa 7.114.16a1 in their header, and a dump under 7.119.10a1 gives the same records. The three numbers dumpers do not run at this commit: they call `common.write` without its `stem_free` argument and raise `TypeError`.
 
 ## Ported functions
 

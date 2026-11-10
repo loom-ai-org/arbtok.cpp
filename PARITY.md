@@ -9,7 +9,7 @@ The goldens are dumped from these versions. Each golden file names them in its h
 | Package | Version |
 | --- | --- |
 | arbtok | 0.0.2a71 (PyPI) |
-| orthography2ipa | 7.114.16a1 |
+| orthography2ipa | 7.119.10a1 |
 | langcodes | 3.5.1 |
 | linguatag | 0.1.5a1 |
 | ovos-spec-tools | 1.17.1a1 |
@@ -20,11 +20,13 @@ The goldens are dumped from these versions. Each golden file names them in its h
 | dateparser | 1.5.0 |
 | Python | 3.12.13 (Unicode 15.0.0) |
 
-The other packages that resolve with these under `uv --prerelease=allow` are: combo_lock 0.3.1, json_database 1.0.5a1, numpy 2.5.4, onnxruntime 1.31.1, ovos-config 3.9.0a2, ovos-utils 0.15.7a2, quebra-frases 0.3.8a1, regex 2026.9.29, and their own dependencies.
+The other packages that resolve with these under `uv --prerelease=allow` are: combo_lock 0.3.1, json_database 1.0.5a1, numpy 2.5.4, onnxruntime 1.31.1, ovos-config 3.9.0a2, ovos-utils 0.15.7a2, quebra-frases 0.3.8a1, regex 2026.11.9, and their own dependencies.
+
+The three numbers goldens (`numbers_ar`, `numbers_dates_ar` and `numbers_dispatch`) name orthography2ipa 7.114.16a1 in their header. The `numbers_ar` dumper calls orthography2ipa to list the lect codes, and both versions give the same 61 codes. A dump under 7.119.10a1 gives the same records in all three goldens.
 
 The gold sets come from the arbtok repository at commit `a95668cf097c5fcfb72b7ab75d7346579626e7a5`, whose `version.py` is 0.0.2a71. The other test inputs come from the `tests/` directory of the 0.0.2a71 sdist and from the data that the installed wheel bundles. `tests/data/textnorm_calls.jsonl.gz` holds the 35138 distinct textnorm and util calls that the sdist test suite makes. `tools/goldens/record_calls.py` records them. The sdist has no `tests/voice_agent.py`, `scripts/` or `data/`, so the recording run takes them from the arbtok repository at the gold commit.
 
-orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned to `11da68ffe8101a3171061cf5eafdf3f376de48f8` on its `correct-port` branch. That commit holds parity with orthography2ipa 7.114.16a1 and linguatag 0.1.5a1.
+orthography2ipa.cpp is the submodule `third_party/orthography2ipa.cpp`, pinned to `edbb5571400a1d208a09f64693ea880e09d344a5` on its `correct-port` branch. That commit holds parity with orthography2ipa 7.119.10a1 and linguatag 0.1.5a1.
 
 ## Public surface
 
@@ -417,7 +419,7 @@ A golden file is `tests/goldens/<module>.jsonl.gz`. Its first line is a header w
 | constants | constants 42 | 42 |
 | diacritize | constants 3, provenance_flags 11, author_complete 3523, proclitic_complete 3523, lattice_errors 5, word 168550, text 1248, vocalize 129706 | 306569 |
 | dialect_lexicon | lexicon_dir 1, available_lects 1, lexicon_file 103, parent_chain 103, entries 103, len 103, get 66933, contains 9562, parse 609, env 7 | 77525 |
-| dialects | constants 14, spec_for_lang 30882, lect_code 30881, o2i_calls 44036, supported_lects 1, arabic_codes 1, dialect_index 1, is_arabic_code 7671, core_subtags 30880, consonant_map 58, consonant_ipa 2610, spec 58 | 147093 |
+| dialects | constants 14, spec_for_lang 30885, lect_code 30884, o2i_calls 44037, supported_lects 1, arabic_codes 1, dialect_index 1, is_arabic_code 7674, core_subtags 30883, consonant_map 58, consonant_ipa 2610, spec 58 | 147106 |
 | donor_lexicon | constants 1, bundled_path_default 1, sequence 31 | 33 |
 | fusion | logprobs 1842, has_arabic_letter 2054, hypothesis_repr 5, fusion 26044 | 29945 |
 | lattice | constants 2, defers_to_cascade 5186, word_ipa 16616, word_lattice 2770, spec_word_exception 3832 | 28406 |
@@ -495,7 +497,7 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | textnorm, exceptions | `leave_unspeakable_numbers` lets a `NotImplementedError` of the reference libraries through | 1334 of 398131, 2 of 16 calls |
 | numbers_dispatch, exceptions | a language that a module of another language serves raises `NotImplementedError`, not `NotPortedError` | 3733 of 20834, 2 of 16 calls |
 | numbers_dispatch | `extract_datetime` sends a code such as `ara` or `ar_SA` to another module | 52 of 20834 |
-| dialects | `split("-x-")[-1]` keeps the hyphen | 2656 of 147093, in each of the 8 shards |
+| dialects | `split("-x-")[-1]` keeps the hyphen | 2656 of 147106 |
 | stress | a negative proclitic_onset cuts one code point late | 6742 of 202430 |
 | sandhi | the pausal form applies when pausal is False | 310 of 34979 |
 | lattice | a kept alternative costs at least 0.5, not 1.0 | 87 of 28406 |
@@ -524,7 +526,7 @@ Each golden suite has a mutation control: one rule is broken in the C++, and the
 | plugin | the fusion diacritizer ignores the `dialect_lexicon` option | 6 of 28423 |
 | o2i_plugins | ArbtokSandhi drops a stress mark at the end of a word | 28 of 9637 |
 | o2i_plugins | ArbtokSandhi restores the last stress mark of a word, not the first | 24 of 9637 |
-| o2i_plugins | the rescore plugin contributes no lattice rescorer | 749 of 9637 |
+| o2i_plugins | the rescore plugin contributes no lattice rescorer | 894 of 9637 |
 | phoonnx | normalize never restores the marks | 1242 of 2187 (every 4th record) |
 | phoonnx | the full register keeps the pausal forms | 194 of 2187 (every 4th record) |
 
@@ -589,22 +591,16 @@ The library finds its data directory in this order: `arbtok::set_data_dir()`, th
 
 ## orthography2ipa.cpp gaps
 
-These are the places where orthography2ipa.cpp at the pinned commit has no equivalent of a Python name that arbtok calls, or gives a different result. arbtok.cpp does not patch the submodule.
+These are the places where orthography2ipa.cpp at the pinned commit has no equivalent of a Python name that arbtok calls, or gives a different result. arbtok.cpp does not patch the submodule. No golden record differs because of them: every record gives the bytes of Python.
 
 | Python name | Gap | What arbtok.cpp does |
 | --- | --- | --- |
-| `orthography2ipa.resolves_exactly` | no C++ function | `arbtok::dialects::detail::resolves_exactly` ports `_resolve_code` with `allow_nearest=False`, on the submodule's `src/registry_tables.inc` |
 | `langcodes.closest_match` | no C++ function | `arbtok::dialects::detail::closest_match` ports langcodes 3.5.1 on orthography2ipa.cpp's `langcodes::tag_distance` |
 | `orthography2ipa.phonetok._expand_arabic_gemination` | internal to the library, not in a header | `src/gemination.cpp` ports it |
 | `orthography2ipa.rescorer` | `rescorer.hpp` uses `AllophoneRule` but does not include its declaration | `lattice.hpp` includes `orthography2ipa.hpp` first |
 | `LanguageSpec.iso639_3` | a JSON `null` loads as the string `"null"` | `dialects` reads `""` and `"null"` as None |
 | `orthography2ipa.registry.UnknownVariantWarning` | `resolve` issues no warning | none needed: arbtok records only `UserWarning` itself, not its subclasses |
-| `RescorerPlugin` | orthography2ipa.cpp adds a whole-word `rescore(word, lang, paths)` seam that Python does not have. `G2P::apply_rescorer_plugins` runs `validate_rescorer_output` on each path that a declared rescore plugin returns (`src/orthography2ipa.cpp:2485`), also when the plugin returns its input unchanged. That check reads `declared_phonemes` (`:1069`, `:864`), which is `spec.phonemes`, or the grapheme values when that list is empty. The Python `G2P` runs no such check. Python `conformance.assert_rescorer_conforms` has the same rule over `phoneme_inventory(spec)`, a wider set | `ArbtokRescorers::rescore` returns the paths unchanged, and `lattice_rescorers` gives the lattice rescorers that Python's `rescorers` gives. `spec.phonemes` is empty in each of the 37 lects of these records, so the set is the grapheme values. A word whose paths hold a phoneme of `phoneme_inventory` outside the grapheme values raises `std::runtime_error`. The 10 rejected symbols are ɑ, ɪ, ɑː, ʊ, oː, ʊː, ɪː, ə, ɛː and eː, and each is in `phoneme_inventory` of its lect. 1042 of the 7971 g2p records are expected divergences: 942 give a transcription in Python, and 100 raise `IndexError` from `ArbtokSandhi` |
 | `orthography2ipa.resolve` | no result cache. A nearest-match resolve costs about 43 ms | `dialects` caches `lect_code` and `is_arabic_code` per tag, as the Python `lru_cache` does |
-
-## Expected divergences
-
-`tests/parity/expected_divergences.tsv` lists each golden record that differs because of a gap above. Each entry gives the golden line, the C++ line that the record gives, and the fix it waits on. A listed record that gives another C++ line is a mismatch. A listed record that starts to match Python fails the suite. A listed record that is not in the goldens also fails it, so the list cannot go stale. The list holds 1039 entries for the 1042 g2p records of `o2i_plugins` that the rescore check of orthography2ipa.cpp stops. Three of those records repeat the line of another, and an entry covers each record with its line. With that check skipped for a result equal to its input, all 9637 o2i_plugins records give the bytes of Python. Every other golden record gives the bytes of Python.
 
 ## Stem lexicon
 
