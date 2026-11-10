@@ -13,9 +13,11 @@
 # committed one. --check also dumps every other golden that dump_goldens.py or
 # ensemble_unicode.py writes, and fails unless its records are byte-identical
 # to the committed file. It does the same for a model golden whose class is
-# the class of this CPU. The numbers goldens come from their own scripts under
-# tools/goldens, and --check names them without a dump. --check fails when
-# it would skip any other golden.
+# the class of this CPU. --check also runs the three numbers dumpers under
+# tools/goldens, and fails when one of them stops with an error or writes
+# other records than the committed file. numbers_calls holds the calls that
+# the arbtok test suite makes, recorded with pytest, and --check names it
+# without a dump. --check fails when it would skip any other golden.
 #
 # It needs uv, curl, the stem lexicon in the Hugging Face cache (see README),
 # and about 3 GB in <out dir>.work for the reference venv and the sources.
@@ -144,15 +146,32 @@ PY
     done
     # Only the numbers goldens come from other scripts. Any other golden that
     # this check would skip is an error, not a pass.
+    numbers="numbers_ar numbers_dates_ar numbers_dispatch"
     not_dumped="numbers_ar numbers_calls numbers_dates_ar numbers_dispatch"
     if [ "$(printf '%s\n' "${skipped[@]}" | sort | xargs)" != "$not_dumped" ]; then
         echo "--check would skip ${skipped[*]}; only $not_dumped come from other scripts" >&2
         exit 1
     fi
-    for m in "${skipped[@]}"; do echo "not dumped by this script: $m"; done
+    for m in "${skipped[@]}"; do [[ " $numbers " == *" $m "* ]] || echo "not dumped by this script: $m"; done
     mkdir -p "$work/check"
     dump "$work/check" "${checked[@]}"
     bad=0
+    calls="$root/tests/goldens/numbers_calls.jsonl.gz"
+    for m in $numbers; do
+        case $m in
+            numbers_ar) args=(numbers_ar.py build "$calls") ;;
+            numbers_dates_ar) args=(dates_ar.py "$calls" "$root/data/numbers/holidays_ar.json") ;;
+            numbers_dispatch) args=(numbers_dispatch.py) ;;
+        esac
+        rm -f "$work/check/$m.jsonl.gz"
+        if ! "$py" -I "$root/tools/goldens/${args[0]}" "${args[@]:1}" "$work/check/$m.jsonl.gz"; then
+            echo "FAILED: the $m dumper stopped with an error"; bad=1
+        elif same "$work/check/$m.jsonl.gz" "$root/tests/goldens/$m.jsonl.gz"; then
+            echo "identical: $m"
+        else
+            echo "DIFFERS: $m"; bad=1
+        fi
+    done
     for m in "${checked[@]}"; do
         if same "$work/check/$m.jsonl.gz" "$root/tests/goldens/$m.jsonl.gz"; then
             echo "identical: $m"

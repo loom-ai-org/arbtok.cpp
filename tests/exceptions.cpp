@@ -3,7 +3,7 @@
 // Python's `except Exception` catches what the reference libraries raise for a
 // language they reject, the call gives Python's value. Where the reference
 // speaks with the module of another language, the call raises NotPortedError.
-// The expected values are the outputs of arbtok 0.0.2a71 under the pinned
+// The expected values are the outputs of arbtok 0.0.2a74 under the pinned
 // reference libraries.
 #include <cstdio>
 #include <functional>

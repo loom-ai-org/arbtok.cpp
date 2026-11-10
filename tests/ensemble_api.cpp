@@ -62,7 +62,7 @@ int main() {
 
     // Synthetic rows with exact ties and NaN, which the model does not emit on
     // the corpus. The expected ids come from EnsembleDiacritizer._constrained_argmax
-    // of arbtok 0.0.2a71 on the same rows.
+    // of arbtok 0.0.2a74 on the same rows.
     const auto constrained = [&](const std::string& text, auto fill) {
         Logits s;
         s.bare = EnsembleDiacritizer::bare(text);

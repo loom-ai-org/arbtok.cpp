@@ -34,14 +34,14 @@ import unicodedata
 #: resolve with arbtok and orthography2ipa under `uv --prerelease=allow`. They decide how a language tag
 #: resolves, so a re-dump with other versions can change the dialects records. The number and date
 #: parsers are the versions that the textnorm and util records speak with and that src/numbers ports.
-PINNED = {"arbtok": "0.0.2a71", "orthography2ipa": "7.119.10a1", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
+PINNED = {"arbtok": "0.0.2a74", "orthography2ipa": "7.122.20a2", "linguatag": "0.1.5a1", "langcodes": "3.5.1",
           "ovos-spec-tools": "1.17.1a1", "ovos-number-parser": "0.24.3a1", "ovos-date-parser": "0.35.7a1",
           "unicode-rbnf": "2.4.1", "chronologia": "0.31.7a2", "dateparser": "1.5.0"}
 #: The packages that compute the model output and the log-probabilities: onnxruntime is the version of the C++
 #: tarball, and fusion.logprobs replicates the numpy loops of this numpy.
 RUNTIME = {"onnxruntime": "1.31.1", "numpy": "2.5.4"}
-#: The arbtok commit whose version.py is 0.0.2a71; the gold sets are read there.
-GOLD_COMMIT = "a95668cf097c5fcfb72b7ab75d7346579626e7a5"
+#: The arbtok commit whose version.py is 0.0.2a74; the gold sets are read there.
+GOLD_COMMIT = "e73a54f8be9537fc804f2280488e38000cd45f1d"
 
 SOURCES = {"sdist_tests": None, "gold_dir": None, "corpus": None}
 

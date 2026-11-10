@@ -3,7 +3,7 @@
 // normalize_asr prepares a transcript for comparison against another; every
 // rule is a flag of AsrNorm that is off unless asked for. normalize_for_tts
 // prepares text to be spoken; its rules are the flags of TtsNorm. The rules,
-// their order and their bytes are those of arbtok 0.0.2a71.
+// their order and their bytes are those of arbtok 0.0.2a74.
 #pragma once
 
 #include <set>

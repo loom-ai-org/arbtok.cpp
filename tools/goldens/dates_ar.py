@@ -1,7 +1,7 @@
 """Golden records for the Arabic date and time functions arbtok calls.
 
 The gold comes from the Python reference ovos-date-parser, at the version
-arbtok 0.0.2a71 resolves to. The record format is the one of
+arbtok 0.0.2a74 resolves to. The record format is the one of
 tools/goldens/numbers_ar.py: [kind, arguments..., result], and a "_block"
 record holds the SHA-256 of the results of a range.
 
@@ -241,7 +241,9 @@ def main():
           f"the port has no answer for: {skipped}", file=sys.stderr)
     print(f"blocks in: {len(blocks)}; tasks in: {n_tasks}; repeats: {duplicates}; records out: {len(records)}",
           file=sys.stderr)
-    common.write(out_path, "numbers_dates_ar", [("dates", n_tasks - duplicates, records)])
+    # No record reads the stem lexicon, so the stem-free dump is the records themselves.
+    common.write(out_path, "numbers_dates_ar", [("dates", n_tasks - duplicates, records)],
+                 [common.dumps(r) for r in records])
 
 
 if __name__ == "__main__":

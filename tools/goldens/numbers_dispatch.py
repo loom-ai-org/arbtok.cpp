@@ -108,7 +108,9 @@ def main():
     counts = collections.Counter(r[1] for r in records)
     print(f"numbers_dispatch: {len(grid)} tags x {per_lang} calls; routes {dict(sorted(counts.items()))}",
           file=sys.stderr)
-    common.write(out_path, "numbers_dispatch", [("dispatch", len(grid) * per_lang, records)])
+    # No record reads the stem lexicon, so the stem-free dump is the records themselves.
+    common.write(out_path, "numbers_dispatch", [("dispatch", len(grid) * per_lang, records)],
+                 [common.dumps(r) for r in records])
 
 
 if __name__ == "__main__":

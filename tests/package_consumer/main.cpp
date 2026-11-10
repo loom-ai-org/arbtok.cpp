@@ -32,7 +32,7 @@ int main() {
                     arbtok::translit::transliterate("meeting", "ar") == "miːtink" &&
                     arbtok::spec_for_lang(std::string("ar-EG")) == "arz-EG" && arbtok::is_arabic_lang("ar_SA") &&
                     arbtok::unicode_symbol2label::get("%").has_value() && !arbtok::supported_lects().empty() &&
-                    ipa == "ˈkataba lˈwaladu" && std::string(arbtok::version::VERSION_STR) == "0.0.2a71" &&
+                    ipa == "ˈkataba lˈwaladu" && std::string(arbtok::version::VERSION_STR) == "0.0.2a74" &&
                     msa.text == "ذَهَب الْوَلَد إِلَى الْمُدَرَّسَة" && egyptian.text == "مِش عَارِف" &&
                     egyptian.words.at(0).provenance == "closed-class" && fused == "ذَهَب الْوَلَد إِلَى الْمُدْرَسَة" &&
                     pausal == "ذَهَب الوَلَد";

@@ -6,7 +6,7 @@ one, and prints the count of inputs and of records for each corpus.
 tests/parity.cpp recomputes every record in C++ and compares the bytes.
 
 Usage, with the reference interpreter, the tests/ directory of the arbtok
-0.0.2a71 sdist and the data/ directory of the arbtok repository at the commit
+0.0.2a74 sdist and the data/ directory of the arbtok repository at the commit
 of that release:
     python -I tools/dump_goldens.py --out-dir tests/goldens --sdist-tests <sdist>/tests --gold-dir <repo>/data \
         --corpus <repo>/tests/ar_test.txt [module ...]

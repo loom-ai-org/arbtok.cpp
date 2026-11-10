@@ -73,7 +73,7 @@ jobs:
       - name: Regenerate the surface table of PARITY.md
         # inventory.py reads the package with ast, so the wheel is unpacked, not installed.
         run: |
-          url=$(python3 -c 'import json, urllib.request; d = json.load(urllib.request.urlopen("https://pypi.org/pypi/arbtok/0.0.2a71/json")); print(next(u["url"] for u in d["urls"] if u["packagetype"] == "bdist_wheel"))')
+          url=$(python3 -c 'import json, urllib.request; d = json.load(urllib.request.urlopen("https://pypi.org/pypi/arbtok/0.0.2a74/json")); print(next(u["url"] for u in d["urls"] if u["packagetype"] == "bdist_wheel"))')
           curl -sSfL -o "$RUNNER_TEMP/arbtok.whl" "$url"
           python3 -m zipfile -e "$RUNNER_TEMP/arbtok.whl" "$RUNNER_TEMP/wheel"
           python3 tools/inventory.py --package-dir "$RUNNER_TEMP/wheel/arbtok" --parity PARITY.md
