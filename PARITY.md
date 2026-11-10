@@ -22,7 +22,7 @@ The goldens are dumped from these versions. Each golden file names them in its h
 
 The other packages that resolve with these under `uv --prerelease=allow` are: combo_lock 0.3.1, json_database 1.0.5a1, numpy 2.5.4, onnxruntime 1.31.1, ovos-config 3.9.0a2, ovos-utils 0.15.7a2, quebra-frases 0.3.8a1, regex 2026.11.9, and their own dependencies.
 
-The three numbers goldens (`numbers_ar`, `numbers_dates_ar` and `numbers_dispatch`) name orthography2ipa 7.114.16a1 in their header. Their records do not call orthography2ipa, and a dump under 7.119.10a1 gives the same records.
+The three numbers goldens (`numbers_ar`, `numbers_dates_ar` and `numbers_dispatch`) name orthography2ipa 7.114.16a1 in their header. The `numbers_ar` dumper calls orthography2ipa to list the lect codes, and both versions give the same 61 codes. A dump under 7.119.10a1 gives the same records in all three goldens.
 
 The gold sets come from the arbtok repository at commit `a95668cf097c5fcfb72b7ab75d7346579626e7a5`, whose `version.py` is 0.0.2a71. The other test inputs come from the `tests/` directory of the 0.0.2a71 sdist and from the data that the installed wheel bundles. `tests/data/textnorm_calls.jsonl.gz` holds the 35138 distinct textnorm and util calls that the sdist test suite makes. `tools/goldens/record_calls.py` records them. The sdist has no `tests/voice_agent.py`, `scripts/` or `data/`, so the recording run takes them from the arbtok repository at the gold commit.
 
